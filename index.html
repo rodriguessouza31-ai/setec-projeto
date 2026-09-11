@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<!-- COPOS MÍSTICOS — página única do jogo.
+     Estrutura: <head> (metas, fontes, CSS) + <body> (fundo, telas, modal, avisos, JS).
+     As 3 telas (menu, jogo, game over) vivem no <main>; o JS mostra 1 por vez. -->
+<html lang="pt-BR"><!-- página em português do Brasil (acentos + leitor de tela) -->
+<head>
+  <!-- Define acentos/emoji (ç, ã, 🔵…) -->
+  <meta charset="UTF-8" />
+  <!-- Faz o jogo caber no celular sem zoom estranho nem rolagem lateral -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <!-- Descrição para Google/compartilhamentos -->
+  <meta name="description" content="Copos Místicos — roguelike web arcade de encontrar bolinhas sob copos. Memorize, acompanhe o embaralhamento e sobreviva!" />
+  <!-- Cor da barra do navegador no celular -->
+  <meta name="theme-color" content="#0a0e1a" />
+  <!-- Título da aba -->
+  <title>Copos Místicos — Roguelike Arcade</title>
+  <!-- Conexão antecipada com o Google Fonts (carrega a fonte mais rápido) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <!-- Fontes: Orbitron (títulos/números arcade) + Rajdhani (textos) -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- CSS do jogo (todo o visual arcade) -->
+  <link rel="stylesheet" href="style.css" />
+  <!-- Pré-carrega as fotos do copo e da bolinha para não piscar na 1ª rodada -->
+  <link rel="preload" as="image" href="img/images__6_-removebg-preview.png" />
+  <link rel="preload" as="image" href="img/istockphoto-1341244428-612x612-removebg-preview.png" />
+  <!-- Ícone da aba: emoji 🥤 embutido como SVG (sem arquivo extra) -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥤</text></svg>" />
+</head>
+<body>
+  <!-- Fundo animado: canvas das partículas (estrelas + explosões, via JS) -->
+  <canvas id="bg-particles" aria-hidden="true"></canvas>
+  <!-- Listrinhas de TV antiga sobre o fundo (só decoração, sem clique) -->
+  <div class="scanlines" aria-hidden="true"></div>
+  <!-- Manchas de luz flutuantes (roxa no topo, rosa na base) -->
+  <div class="glow-orb orb-1" aria-hidden="true"></div>
+  <div class="glow-orb orb-2" aria-hidden="true"></div>
+
+  <!-- Contêiner central do jogo (largura máx. 1080px) -->
+  <div id="app">
+    <!-- ============ TOPBAR: logo + recorde + som ============ -->
+    <header class="topbar">
+      <!-- Logo: emoji + nome com degradê + selo ROGUELIKE -->
+      <div class="logo">
+        <span class="logo-icon">🥤</span><!-- emoji flutuante -->
+        <span class="logo-text">COPOS <em>MÍSTICOS</em></span><!-- nome (MÍSTICOS em degradê) -->
+        <span class="logo-tag">ROGUELIKE</span><!-- selo laranja -->
+      </div>
+      <!-- Lado direito: selo do recorde e botão de mudo -->
+      <div class="topbar-right">
+        <!-- Recorde ao vivo (top-high é atualizado pelo JS) -->
+        <div class="high-badge" title="Recorde salvo no navegador">🏆 <span id="top-high">0</span></div>
+        <!-- Liga/desliga todos os sons (JS troca 🔊/🔇) -->
+        <button id="btn-mute" class="icon-btn" title="Ativar/desativar som" aria-label="Ativar ou desativar som">🔊</button>
+      </div>
+    </header>
+
+    <main>
+      <!-- ============ TELA 1: MENU (início) ============ -->
+      <section id="screen-menu" class="screen active"><!-- .active = visível ao abrir -->
+        <div class="menu-hero"><!-- cartão principal do menu -->
+          <!-- Selo pequeno acima do título -->
+          <div class="hero-badge">🕹️ ARCADE • ROGUELIKE • SHELL GAME</div>
+          <!-- Título gigante em 2 linhas (MÍSTICOS com degradê animado) -->
+          <h1 class="game-title">
+            <span class="title-line">COPOS</span>
+            <span class="title-line gradient">MÍSTICOS</span>
+          </h1>
+          <!-- Frase de efeito -->
+          <p class="tagline">Memorize as bolinhas. Siga os copos. <strong>Sobreviva ao embaralhamento.</strong></p>
+
+          <!-- 3 caixinhas: recorde / copos iniciais / bolinhas -->
+          <div class="menu-stats">
+            <div class="menu-stat"><span class="ms-label">RECORDE</span><span class="ms-value" id="menu-high">0</span></div>
+            <div class="menu-stat"><span class="ms-label">COPOS INICIAIS</span><span class="ms-value">3 🥤</span></div>
+            <div class="menu-stat"><span class="ms-label">BOLINHAS</span><span class="ms-value">1 🔮</span></div>
+          </div>
+
+          <!-- Botões: começar e abrir o tutorial -->
+          <div class="menu-buttons">
+            <button id="btn-start" class="btn btn-primary btn-big">▶ &nbsp;JOGAR AGORA</button>
+            <button id="btn-how" class="btn btn-ghost">❓ COMO JOGAR</button>
+          </div>
+
+          <!-- Tutorial escondido (abre com COMO JOGAR): regras + tabela de dificuldade -->
+          <div id="howto" class="howto hidden">
+            <h3>📜 Como jogar</h3>
+            <ol>
+              <li><strong>Memorize:</strong> as bolinhas são reveladas por ~2 segundos.</li>
+              <li><strong>Acompanhe:</strong> os copos escondem tudo e embaralham cada vez mais rápido.</li>
+              <li><strong>Encontre TODAS as bolinhas:</strong> clique nos copos. Achou todas → próxima rodada + carta!</li>
+              <li><strong>Errou 1 copo vazio → GAME OVER.</strong></li>
+              <li><strong>Progressão:</strong> +1 copo por rodada • +1 bolinha a cada 5 rodadas • velocidade e truques aumentam.</li>
+              <li><strong>Cartas:</strong> use com estratégia na hora de adivinhar para ganhar bônus.</li>
+            </ol>
+            <!-- Resumo da dificuldade por rodada -->
+            <div class="diff-table">
+              <div><span>Rodada 1</span><b>3 copos • 1 bola • lento</b></div>
+              <div><span>Rodada 6</span><b>8 copos • 2 bolas • rápido + giros triplos</b></div>
+              <div><span>Rodada 11+</span><b>10 copos • 3 bolas • insano 🔥</b></div>
+            </div>
+          </div>
+
+          <!-- Prévia ilustrativa das 3 cartas (só visual, não clica) -->
+          <div class="cards-preview">
+            <h3>🃏 Cartas do deck</h3>
+            <div class="preview-grid">
+              <div class="mini-card blue"><span class="mc-icon">🔵</span><b>Olho Aguçado</b><small>Revela 1 bolinha por 0,6s</small></div>
+              <div class="mini-card yellow"><span class="mc-icon">🟡</span><b>Copo Seguro</b><small>Remove 1 copo vazio</small></div>
+              <div class="mini-card green"><span class="mc-icon">🟢</span><b>Duplicação</b><small>+2 bolinhas • +pontos • +risco</small></div>
+            </div>
+          </div>
+
+          <!-- Dica do multiplicador de pontos -->
+          <p class="hint-line">💡 Dica: cada vitória aumenta o multiplicador <b>x1 → x1.2 → x1.4…</b> Errar zera tudo.</p>
+        </div>
+      </section>
+
+      <!-- ============ TELA 2: JOGO (partida) ============ -->
+      <section id="screen-game" class="screen">
+        <!-- HUD: os 5 números do topo, atualizados pelo JS a cada jogada -->
+        <div class="hud">
+          <div class="hud-card"><span class="hud-label">RODADA</span><span class="hud-value" id="hud-round">1</span></div>
+          <div class="hud-card score"><span class="hud-label">PONTOS</span><span class="hud-value" id="hud-score">0</span></div>
+          <div class="hud-card mult"><span class="hud-label">MULT</span><span class="hud-value" id="hud-mult">x1.0</span></div>
+          <div class="hud-card"><span class="hud-label">RECORDE</span><span class="hud-value" id="hud-high">0</span></div>
+          <div class="hud-card balls"><span class="hud-label">BOLINHAS</span><span class="hud-value" id="hud-balls">0/1</span></div>
+        </div>
+
+        <!-- Barra da fase: selo atual + progresso do embaralhamento + infos -->
+        <div class="phase-bar">
+          <div id="phase-label" class="phase-label">👁️ Memorize as bolinhas!</div><!-- texto da fase (JS troca) -->
+          <div class="shuffle-track"><div id="shuffle-progress" class="shuffle-fill"></div></div><!-- barrinha 0→100% -->
+          <div id="round-info" class="round-info"></div><!-- ex: "Faltam 2 • Errou = Game Over" -->
+        </div>
+
+        <!-- Arena: mesa onde o JS desenha os copos (#cups) + letreiro de VITÓRIA/ERROU -->
+        <div id="arena" class="arena">
+          <div class="arena-glow"></div><!-- luz neon no chão (decoração) -->
+          <div id="cups" class="cups"></div><!-- AQUI entram os copos criados pelo JS -->
+          <div id="arena-message" class="arena-message hidden"></div><!-- letreiro gigante -->
+        </div>
+
+        <!-- Deck: as 3 cartas com quantidade (qty-*) e botão USAR (data-use) -->
+        <div class="deck-section">
+          <div class="deck-header">
+            <h3>🎒 SEU DECK <span id="deck-count" class="deck-count">0 cartas</span></h3>
+            <span class="deck-hint">Ative durante a adivinhação</span>
+          </div>
+          <div id="deck" class="deck">
+            <!-- Carta 🔵 Olho: revela 1 bolinha por 0,6s -->
+            <div class="deck-card blue" data-card="olho">
+              <div class="dc-top"><span class="dc-icon">🔵</span><span class="dc-qty" id="qty-olho">0</span></div>
+              <b>Olho Aguçado</b>
+              <small>Revela 1 bolinha por 0,6s. Chance extra de acerto.</small>
+              <button class="btn btn-card blue-btn" data-use="olho" disabled>USAR</button>
+            </div>
+            <!-- Carta 🟡 Seguro: remove 1 copo vazio -->
+            <div class="deck-card yellow" data-card="seguro">
+              <div class="dc-top"><span class="dc-icon">🟡</span><span class="dc-qty" id="qty-seguro">0</span></div>
+              <b>Copo Seguro</b>
+              <small>Remove 1 copo vazio do tabuleiro.</small>
+              <button class="btn btn-card yellow-btn" data-use="seguro" disabled>USAR</button>
+            </div>
+            <!-- Carta 🟢 Duplicação: +2 bolinhas (+pontos, +risco) -->
+            <div class="deck-card green" data-card="duplicacao">
+              <div class="dc-top"><span class="dc-icon">🟢</span><span class="dc-qty" id="qty-duplicacao">0</span></div>
+              <b>Duplicação</b>
+              <small>Cria +2 bolinhas. Mais pontos, mais risco!</small>
+              <button class="btn btn-card green-btn" data-use="duplicacao" disabled>USAR</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ações da partida: desistir (conta derrota com pontos) e recomeçar -->
+        <div class="game-actions">
+          <button id="btn-quit" class="btn btn-ghost btn-small">🏳️ Desistir</button>
+          <button id="btn-restart" class="btn btn-ghost btn-small">🔄 Recomeçar</button>
+        </div>
+      </section>
+
+      <!-- ============ TELA 3: GAME OVER (derrota) ============ -->
+      <section id="screen-gameover" class="screen">
+        <div class="gameover-box"><!-- cartão da derrota -->
+          <div class="go-emoji" id="go-emoji">💀</div><!-- caveira aleatória (JS sorteia) -->
+          <h2 class="go-title">GAME OVER</h2><!-- título em degradê vermelho -->
+          <p id="go-reason" class="go-reason">Você abriu um copo vazio…</p><!-- motivo + contexto da rodada -->
+          <div id="go-record" class="go-record hidden">🏆 NOVO RECORDE! 🏆</div><!-- selo (só se for recorde) -->
+          <!-- Grade de estatísticas finais (JS preenche os <b id="go-*">) -->
+          <div class="go-grid">
+            <div class="go-stat"><span>🎯 RODADA</span><b id="go-round">1</b></div>
+            <div class="go-stat highlight"><span>⭐ PONTUAÇÃO</span><b id="go-score">0</b></div>
+            <div class="go-stat"><span>🏆 RECORDE</span><b id="go-high">0</b></div>
+            <div class="go-stat"><span>🔮 BOLINHAS ENCONTRADAS</span><b id="go-balls">0</b></div>
+            <div class="go-stat"><span>🔥 MULT MÁXIMO</span><b id="go-mult">x1.0</b></div>
+            <div class="go-stat"><span>🃏 CARTAS OBTIDAS</span><b id="go-cards">0</b></div>
+          </div>
+          <div id="go-deck" class="go-deck"></div><!-- resumo do deck restante (JS monta) -->
+          <!-- Botões: jogar de novo ou voltar ao menu -->
+          <div class="menu-buttons">
+            <button id="btn-again" class="btn btn-primary btn-big">🔄 &nbsp;JOGAR DE NOVO</button>
+            <button id="btn-menu" class="btn btn-ghost">🏠 MENU</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Rodapé: versão + ano atual (JS escreve o ano no #year) -->
+    <footer class="footer">COPOS MÍSTICOS v1.0 • feito com HTML + CSS + JS • recorde salvo localmente • <span id="year"></span></footer>
+  </div>
+
+  <!-- ============ MODAL DE RECOMPENSA (após cada vitória) ============ -->
+  <!-- Janela sobre o jogo: mostra pontos e 3 cartas (JS monta em #reward-cards) -->
+  <div id="reward-modal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Escolha sua recompensa">
+    <div class="modal-box reward-box">
+      <div class="reward-confetti" aria-hidden="true">🎉✨🎉✨🎉</div><!-- confete decorativo -->
+      <h2>🎁 RODADA <span id="reward-round">1</span> VENCIDA!</h2><!-- nº da rodada vencida -->
+      <p class="reward-points" id="reward-points">+0 pontos</p><!-- pontos ganhos -->
+      <p class="reward-sub">Escolha <strong>1 carta</strong> para adicionar ao seu deck:</p>
+      <div id="reward-cards" class="reward-cards"></div><!-- AQUI entram as 3 ofertas -->
+    </div>
+  </div>
+
+  <!-- Caixa dos avisos flutuantes (toasts criados pelo JS) -->
+  <div id="toast-container" aria-live="polite"></div>
+
+  <!-- Lógica do jogo (sempre por último, para o HTML já existir) -->
+  <script src="script.js"></script>
+</body>
+</html>
