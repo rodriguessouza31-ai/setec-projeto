@@ -650,7 +650,10 @@ function winRound() {
   S.maxMult = Math.max(S.maxMult, mult); // guarda o maior mult (estatística final)
   const bonusCartas = S.cardsUsedThisRound.size * 30; // +30 por tipo de carta usada
   // Fórmula: base 100 + 25/rodada + 60/bolinha + bônus de cartas, tudo × mult.
-  const pts = Math.round((100 + (S.round - 1) * 25 + S.numBalls * 60 + bonusCartas) * mult);
+  // Poder Duplicação: dobra os pontos da rodada (só vale se vencer achando TODAS!).
+  let pts = Math.round((100 + (S.round - 1) * 25 + S.numBalls * 60 + bonusCartas) * mult);
+  const dobrou = S.cardsUsedThisRound.has('duplicacao');
+  if (dobrou) pts *= 2;
   S.score += pts; // soma ao total da run
   if (S.score > S.high) { S.high = S.score; saveHigh(); } // novo recorde? salva!
   updateHUD(); // mostra os pontos novos no topo
@@ -662,7 +665,7 @@ function winRound() {
   S.cups.forEach(c => { if (c.hasBall) { c.el.classList.add('lifted'); c.el.classList.add('correct'); } });
   setPhase('reward', '🏆 Você achou todas! Escolha sua recompensa…'); // selo
   // Detalha os pontos ganhos na linha de info.
-  $('round-info').textContent = `+${pts.toLocaleString('pt-BR')} pontos • mult x${mult.toFixed(1)}${bonusCartas ? ' • +bônus de cartas!' : ''}`;
+  $('round-info').textContent = `+${pts.toLocaleString('pt-BR')} pontos • mult x${mult.toFixed(1)}${bonusCartas ? ' • +bônus de cartas!' : ''}${dobrou ? ' • 🟢 PONTOS DOBRADOS!' : ''}`;
   // Após 1,3s de comemoração, abre o modal para escolher a carta.
   setTimeout(() => { if (token === S.shuffleToken) openReward(pts); }, 1300);
 }

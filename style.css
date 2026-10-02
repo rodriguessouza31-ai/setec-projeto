@@ -261,18 +261,16 @@ body {
   width: 78%; height: 14px; background: radial-gradient(ellipse, rgba(0,0,0,.55), transparent 70%);
   border-radius: 50%; margin-top: 6px;
 }
-/* Bolinha: foto redonda escondida (scale 0); o fundo preto da foto some com
-   mix-blend-mode screen sobre o fundo escuro da arena. */
+/* Bolinha: foto redonda com fundo transparente, escondida (scale 0). */
 .ball {
-  position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%) scale(0); /* escondida */
-  width: clamp(40px, 8vw, 56px); height: clamp(40px, 8vw, 56px);
+  position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%) scale(0); /* escondida */
+  width: clamp(48px, 9vw, 64px); height: clamp(48px, 9vw, 64px);
   border-radius: 50%; overflow: hidden; /* recorte circular */
   transition: transform .35s cubic-bezier(.34,1.56,.64,1); z-index: 2; /* aparece com "pop" */
   pointer-events: none; /* clique passa para o copo */
 }
 .ball img {
   width: 100%; height: 100%; object-fit: cover; border-radius: 50%;
-  mix-blend-mode: screen; /* TRUQUE: preto da foto vira transparente no fundo escuro */
   filter: drop-shadow(0 0 10px rgba(251,191,36,.85)); /* glow dourado */
   animation: ballGlow 1.6s ease-in-out infinite alternate; /* glow pulsando */
 }
@@ -280,8 +278,8 @@ body {
 /* REGRA-CHAVE ANTI-BUG: a bola só aparece se o copo tem .has-ball (tem bola
    de verdade) E .lifted (está levantado). Copo vazio levanta e mostra vazio. */
 .cup-slot.has-ball.lifted .ball { transform: translateX(-50%) scale(1); }
-/* Copo levantado: sobe e inclina para revelar o que há embaixo. */
-.cup-slot.lifted .cup-body { transform: translateY(-52px) rotate(-4deg); }
+/* Copo levantado: sobe bem alto e inclina de leve para revelar a bolinha. */
+.cup-slot.lifted .cup-body { transform: translateY(-85px) rotate(-5deg); }
 /* Copo certo: glow verde + pulinho de comemoração. */
 .cup-slot.correct .cup-body { filter: drop-shadow(0 0 18px var(--green)) saturate(1.4) brightness(1.1); animation: winBounce .6s ease; }
 .cup-slot.correct { animation: correctGlow 1s ease; }
@@ -446,6 +444,7 @@ body {
   .arena { min-height: 260px; } /* arena mais baixa */
   .topbar { padding: 10px 0; } /* topo compacto */
   .logo-text { font-size: 15px; } /* logo menor */
+  .cup-slot.lifted .cup-body { transform: translateY(-62px) rotate(-5deg); } /* levantamento menor: arena mais baixa */
 }
 @media (max-width: 380px) {
   .hud { grid-template-columns: repeat(2, 1fr); } /* HUD em 2 colunas */
