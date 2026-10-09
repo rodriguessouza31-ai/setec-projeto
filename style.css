@@ -69,6 +69,46 @@ body {
 .orb-2 { width: 380px; height: 380px; background: #db2777; bottom: -120px; right: -100px; animation: drift 14s ease-in-out infinite alternate-reverse; } /* mancha rosa base-direita */
 @keyframes drift { to { transform: translate(40px, 30px) scale(1.1); } } /* flutuação dos orbes */
 
+/* ---------- imagens flutuantes (menu + fundo do jogo) ----------
+   As 2 imagens pedidas passeiam de um lado para o outro, em loop.
+   - .bg-floaters = fundo do jogo (atrás do conteúdo, sem clique)
+   - .menu-floaters = vitrine dentro do menu principal */
+.bg-floaters { position: fixed; inset: 0; z-index: 1; pointer-events: none; overflow: hidden; }
+.bg-floater { position: absolute; pointer-events: none; user-select: none; opacity: .28; }
+.floater-left {
+  top: 12%; left: 4%; width: clamp(140px, 22vw, 260px); aspect-ratio: 16/9; object-fit: cover;
+  border-radius: 18px; border: 1px solid rgba(34,211,238,.4);
+  box-shadow: 0 0 30px rgba(34,211,238,.25); opacity: .22;
+  animation: bg-slide-a 9s ease-in-out infinite alternate;
+}
+.floater-right {
+  bottom: 8%; right: 4%; width: clamp(90px, 14vw, 160px); aspect-ratio: 1/1; object-fit: contain;
+  filter: drop-shadow(0 0 18px rgba(244,114,182,.55)); opacity: .5;
+  animation: bg-slide-b 11s ease-in-out infinite alternate;
+}
+@keyframes bg-slide-a { from { transform: translateX(-6vw); } to { transform: translateX(6vw); } }
+@keyframes bg-slide-b { from { transform: translateX(6vw) rotate(-4deg); } to { transform: translateX(-6vw) rotate(4deg); } }
+
+/* Vitrine do menu principal: as 2 imagens lado a lado, indo e voltando. */
+.menu-floaters {
+  display: flex; justify-content: center; align-items: center; gap: 18px;
+  margin: 4px auto 20px; max-width: 560px; overflow: hidden; padding: 6px 4px;
+}
+.menu-floater { user-select: none; pointer-events: none; }
+.menu-floater-a {
+  width: clamp(180px, 42vw, 300px); height: clamp(100px, 20vw, 160px); object-fit: cover;
+  border-radius: 16px; border: 1px solid rgba(34,211,238,.5);
+  box-shadow: 0 8px 30px rgba(0,0,0,.5), 0 0 24px rgba(34,211,238,.25);
+  animation: menu-slide-a 5s ease-in-out infinite alternate;
+}
+.menu-floater-b {
+  width: clamp(100px, 22vw, 150px); height: clamp(100px, 20vw, 160px); object-fit: contain;
+  filter: drop-shadow(0 0 16px rgba(244,114,182,.6));
+  animation: menu-slide-b 6s ease-in-out infinite alternate;
+}
+@keyframes menu-slide-a { from { transform: translateX(-26px); } to { transform: translateX(26px); } }
+@keyframes menu-slide-b { from { transform: translateX(26px); } to { transform: translateX(-26px); } }
+
 /* Conteúdo do jogo: centralizado, acima do fundo (z-index 2). */
 #app { position: relative; z-index: 2; max-width: 1080px; margin: 0 auto; padding: 0 16px 30px; }
 
@@ -445,6 +485,9 @@ body {
   .topbar { padding: 10px 0; } /* topo compacto */
   .logo-text { font-size: 15px; } /* logo menor */
   .cup-slot.lifted .cup-body { transform: translateY(-62px) rotate(-5deg); } /* levantamento menor: arena mais baixa */
+  .floater-left { top: 8%; opacity: .16; } /* fundo mais discreto no celular */
+  .floater-right { bottom: 4%; opacity: .38; }
+  .menu-floaters { gap: 12px; } /* vitrine mais junta no celular */
 }
 @media (max-width: 380px) {
   .hud { grid-template-columns: repeat(2, 1fr); } /* HUD em 2 colunas */

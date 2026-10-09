@@ -24,6 +24,9 @@
   <!-- Pré-carrega as fotos do copo e da bolinha para não piscar na 1ª rodada -->
   <link rel="preload" as="image" href="img/images__6_-removebg-preview.png" />
   <link rel="preload" as="image" href="img/istockphoto-1341244428-612x612-removebg-preview.png" />
+  <!-- Pré-carrega as imagens flutuantes do menu/fundo (movimento lateral) -->
+  <link rel="preload" as="image" href="img/gemini.jpeg" />
+  <link rel="preload" as="image" href="img/images__14_-removebg-preview.png" />
   <!-- Ícone da aba: emoji 🥤 embutido como SVG (sem arquivo extra) -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥤</text></svg>" />
 </head>
@@ -35,6 +38,11 @@
   <!-- Manchas de luz flutuantes (roxa no topo, rosa na base) -->
   <div class="glow-orb orb-1" aria-hidden="true"></div>
   <div class="glow-orb orb-2" aria-hidden="true"></div>
+  <!-- Imagens de fundo do jogo: passeiam de um lado para o outro (só decoração, sem clique) -->
+  <div class="bg-floaters" aria-hidden="true">
+    <img class="bg-floater floater-left" src="img/gemini.jpeg" alt="" draggable="false" />
+    <img class="bg-floater floater-right" src="img/images__14_-removebg-preview.png" alt="" draggable="false" />
+  </div>
 
   <!-- Contêiner central do jogo (largura máx. 1080px) -->
   <div id="app">
@@ -68,6 +76,12 @@
           </h1>
           <!-- Frase de efeito -->
           <p class="tagline">Memorize as bolinhas. Siga os copos. <strong>Sobreviva ao embaralhamento.</strong></p>
+
+          <!-- Imagens do menu principal: passeiam de um lado para o outro -->
+          <div class="menu-floaters" aria-hidden="true">
+            <img class="menu-floater menu-floater-a" src="img/gemini.jpeg" alt="" draggable="false" />
+            <img class="menu-floater menu-floater-b" src="img/images__14_-removebg-preview.png" alt="" draggable="false" />
+          </div>
 
           <!-- 3 caixinhas: recorde / copos iniciais / bolinhas -->
           <div class="menu-stats">
