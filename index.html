@@ -86,8 +86,30 @@
           <!-- 3 caixinhas: recorde / copos iniciais / bolinhas -->
           <div class="menu-stats">
             <div class="menu-stat"><span class="ms-label">RECORDE</span><span class="ms-value" id="menu-high">0</span></div>
-            <div class="menu-stat"><span class="ms-label">COPOS INICIAIS</span><span class="ms-value">3 🥤</span></div>
+            <div class="menu-stat"><span class="ms-label">COPOS INICIAIS</span><span class="ms-value" id="stat-cups">3 🥤</span></div>
             <div class="menu-stat"><span class="ms-label">BOLINHAS</span><span class="ms-value">1 🔮</span></div>
+          </div>
+
+          <!-- Escolha de dificuldade: Normal / Difícil / Místico -->
+          <div class="diff-select">
+            <h3>⚔️ ESCOLHA A DIFICULDADE</h3>
+            <div class="diff-grid">
+              <button class="diff-card active" data-diff="normal" type="button">
+                <span class="diff-icon">😌</span><b>NORMAL</b>
+                <small>3 copos iniciais • base do jogo</small>
+                <span class="diff-power">🎁 1 poder por rodada</span>
+              </button>
+              <button class="diff-card hard" data-diff="dificil" type="button">
+                <span class="diff-icon">😈</span><b>DIFÍCIL</b>
+                <small>4 copos iniciais • sem poderes • puro desafio</small>
+                <span class="diff-power">🚫 sem poderes</span>
+              </button>
+              <button class="diff-card mystic" data-diff="mistico" type="button">
+                <span class="diff-icon">🔮</span><b>MÍSTICO</b>
+                <small>6 copos iniciais • caos total</small>
+                <span class="diff-power">🎁🎁🎁🎁 4 poderes por rodada</span>
+              </button>
+            </div>
           </div>
 
           <!-- Botões: começar e abrir o tutorial -->
@@ -105,6 +127,7 @@
               <li><strong>Encontre pelo menos 1 bolinha:</strong> clique nos copos. Achou 1 → próxima rodada + carta!</li>
               <li><strong>Errou 1 copo vazio → GAME OVER.</strong></li>
               <li><strong>Progressão:</strong> +1 copo por rodada • +1 bolinha a cada 5 rodadas (sempre basta achar 1!) • velocidade e truques aumentam.</li>
+              <li><strong>Dificuldades:</strong> 😌 Normal (3 copos, 1 poder) • 😈 Difícil (4 copos, 🚫 sem poderes) • 🔮 Místico (6 copos, 4 poderes).</li>
               <li><strong>Cartas:</strong> use com estratégia na hora de adivinhar para ganhar bônus.</li>
             </ol>
             <!-- Resumo da dificuldade por rodada -->
@@ -119,7 +142,7 @@
           <div class="cards-preview">
             <h3>🃏 Cartas do deck</h3>
             <div class="preview-grid">
-              <div class="mini-card blue"><span class="mc-icon">🔵</span><b>Olho Aguçado</b><small>Revela 1 bolinha por 0,6s</small></div>
+              <div class="mini-card blue"><span class="mc-icon">🔵</span><b>Olho Aguçado</b><small>Revela 1 bolinha por 0,2s</small></div>
               <div class="mini-card yellow"><span class="mc-icon">🟡</span><b>Copo Seguro</b><small>Remove 1 copo vazio</small></div>
               <div class="mini-card green"><span class="mc-icon">🟢</span><b>Duplicação</b><small>+2 bolinhas • +pontos • +risco</small></div>
             </div>
@@ -144,6 +167,7 @@
         <!-- Barra da fase: selo atual + progresso do embaralhamento + infos -->
         <div class="phase-bar">
           <div id="phase-label" class="phase-label">👁️ Memorize as bolinhas!</div><!-- texto da fase (JS troca) -->
+          <div id="diff-badge" class="diff-badge diff-normal">😌 NORMAL • 🎁 1 poder/rodada</div>
           <div class="shuffle-track"><div id="shuffle-progress" class="shuffle-fill"></div></div><!-- barrinha 0→100% -->
           <div id="round-info" class="round-info"></div><!-- ex: "Faltam 2 • Errou = Game Over" -->
         </div>
@@ -162,11 +186,11 @@
             <span class="deck-hint">Ative durante a adivinhação</span>
           </div>
           <div id="deck" class="deck">
-            <!-- Carta 🔵 Olho: revela 1 bolinha por 0,6s -->
+              <!-- Carta 🔵 Olho: revela 1 bolinha por 0,2s -->
             <div class="deck-card blue" data-card="olho">
               <div class="dc-top"><span class="dc-icon">🔵</span><span class="dc-qty" id="qty-olho">0</span></div>
               <b>Olho Aguçado</b>
-              <small>Revela 1 bolinha por 0,6s. Chance extra de acerto.</small>
+              <small>Revela 1 bolinha por 0,2s. Chance extra de acerto.</small>
               <button class="btn btn-card blue-btn" data-use="olho" disabled>USAR</button>
             </div>
             <!-- Carta 🟡 Seguro: remove 1 copo vazio -->
@@ -199,6 +223,7 @@
           <div class="go-emoji" id="go-emoji">💀</div><!-- caveira aleatória (JS sorteia) -->
           <h2 class="go-title">GAME OVER</h2><!-- título em degradê vermelho -->
           <p id="go-reason" class="go-reason">Você abriu um copo vazio…</p><!-- motivo + contexto da rodada -->
+          <div id="go-diff" class="go-diff">😌 Dificuldade: NORMAL</div>
           <div id="go-record" class="go-record hidden">🏆 NOVO RECORDE! 🏆</div><!-- selo (só se for recorde) -->
           <!-- Grade de estatísticas finais (JS preenche os <b id="go-*">) -->
           <div class="go-grid">
@@ -231,7 +256,7 @@
       <div class="reward-confetti" aria-hidden="true">🎉✨🎉✨🎉</div><!-- confete decorativo -->
       <h2>🎁 RODADA <span id="reward-round">1</span> VENCIDA!</h2><!-- nº da rodada vencida -->
       <p class="reward-points" id="reward-points">+0 pontos</p><!-- pontos ganhos -->
-      <p class="reward-sub">Escolha <strong>1 carta</strong> para adicionar ao seu deck:</p>
+      <p class="reward-sub" id="reward-sub">Escolha <strong>1 carta</strong> para adicionar ao seu deck:</p>
       <div id="reward-cards" class="reward-cards"></div><!-- AQUI entram as 3 ofertas -->
     </div>
   </div>

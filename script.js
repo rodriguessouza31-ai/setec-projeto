@@ -40,7 +40,7 @@ const CONFIG = {
   maxBaseBalls: 4,      // teto de bolinhas do sorteio base (sem contar Duplicação)
   maxMoves: 30,         // teto de movimentos do embaralhamento por rodada
   showTimeBase: 2100,   // ms que as bolinhas ficam visíveis (diminui por rodada)
-  olhoRevealMs: 600,    // TEMPO do Olho Aguçado: revela 1 bolinha por 0,6s
+  olhoRevealMs: 200,    // TEMPO do Olho Aguçado: revela 1 bolinha por 0,2s (bem rápido!)
   maxHighKey: 'coposMisticosHigh_v1', // chave do recorde no localStorage
 };
 
@@ -49,7 +49,7 @@ const CONFIG = {
 const CARDS = {
   olho: {
     id: 'olho', nome: 'Olho Aguçado', icone: '🔵', cor: 'blue',
-    desc: 'Revela 1 bolinha por 0,6s. Aumenta moderadamente a chance de acerto.',
+    desc: 'Revela 1 bolinha por 0,2s. Aumenta moderadamente a chance de acerto.',
   },
   seguro: {
     id: 'seguro', nome: 'Copo Seguro', icone: '🟡', cor: 'yellow',
@@ -60,6 +60,17 @@ const CARDS = {
     desc: 'Cria +2 bolinhas em copos vazios. Muito poderosa: +pontos, mas +risco!',
   },
 };
+/* DIFFS descreve as 3 dificuldades escolhidas no menu:
+   - normal: base do jogo (3 copos, 1 poder por rodada)
+   - dificil: começa com 4 copos e NÃO ganha nenhum poder
+   - mistico: começa com 6 copos (4 poderes por rodada) */
+const DIFFS = {
+  normal:  { id: 'normal',  nome: 'NORMAL',  icone: '😌', baseCups: 3, picks: 1, badge: '😌 NORMAL • 🎁 1 poder/rodada',   css: 'diff-normal' },
+  dificil: { id: 'dificil', nome: 'DIFÍCIL', icone: '😈', baseCups: 4, picks: 0, badge: '😈 DIFÍCIL • 🚫 sem poderes', css: 'diff-dificil' },
+  mistico: { id: 'mistico', nome: 'MÍSTICO', icone: '🔮', baseCups: 6, picks: 4, badge: '🔮 MÍSTICO • 🎁🎁🎁🎁 4 poderes/rodada', css: 'diff-mistico' },
+};
+const DIFF_IDS = Object.keys(DIFFS);
+const DIFF_KEY = 'coposMisticosDiff_v1'; // chave da dificuldade no localStorage
 /* CARD_IDS é a lista ['olho','seguro','duplicacao'], usada nos sorteios. */
 const CARD_IDS = Object.keys(CARDS);
 
@@ -74,6 +85,10 @@ const BALL_IMG = 'img/istockphoto-1341244428-612x612-removebg-preview.png'; // f
 const S = {
   screen: 'menu',          // qual tela está visível: 'menu' | 'game' | 'over'
   phase: 'idle',           // fase da rodada: show|hide|shuffle|guess|reward|over
+  difficulty: 'normal',    // dificuldade atual: 'normal' | 'dificil' | 'mistico'
+  rewardPicksLeft: 0,      // quantos poderes ainda faltam escolher no modal atual
+  rewardTotal: 0,          // total de poderes a escolher nesta recompensa
+  rewardPts: 0,            // pontos ganhos na rodada (exibidos no modal)
   round: 1,                // rodada atual (começa em 1)
   score: 0,                // pontuação acumulada na run atual
   high: 0,                 // recorde salvo (carregado do localStorage)
@@ -207,8 +222,15 @@ function toast(msg, type = '') {
 
 /* ================= 6. DIFICULDADE (fórmulas por rodada) ================= */
 
-/* cupsForRound() calcula os copos da rodada r: 3, 4, 5… até o teto de 10. */
-function cupsForRound(r) { return Math.min(CONFIG.baseCups + (r - 1) * CONFIG.cupsPerRound, CONFIG.maxCups); }
+/* baseCupsForDiff() devolve os copos iniciais da dificuldade atual
+   (normal=3, dificil=4, mistico=6). */
+function baseCupsForDiff() { return (DIFFS[S.difficulty] || DIFFS.normal).baseCups; }
+/* picksForDiff() devolve quantos poderes se ganha por rodada
+   (normal=1, dificil=0, mistico=4). */
+function picksForDiff() { return (DIFFS[S.difficulty] || DIFFS.normal).picks; }
+/* cupsForRound() calcula os copos da rodada r: base da dificuldade +1 por
+   rodada, até o teto de 10. Ex: normal 3,4,5… | dificil 4,5,6… | mistico 6,7,8… */
+function cupsForRound(r) { return Math.min(baseCupsForDiff() + (r - 1) * CONFIG.cupsPerRound, CONFIG.maxCups); }
 /* baseBallsForRound() calcula as bolinhas da rodada r: +1 a cada 5 rodadas,
    nunca mais que (copos-1) e nunca mais que o teto. */
 function baseBallsForRound(r) {
@@ -230,6 +252,29 @@ function multForRound(r) { return 1 + (r - 1) * 0.2; }
 /* showTimeForRound() calcula por quanto tempo as bolinhas ficam visíveis no
    início da rodada (diminui com a rodada, mínimo 1,1s). */
 function showTimeForRound(r) { return Math.max(CONFIG.showTimeBase - r * 60, 1100); }
+
+/* setDifficulty() troca a dificuldade escolhida no menu: valida o id, salva
+   no estado + localStorage e atualiza os botões, o "copos iniciais" e o selo. */
+function setDifficulty(id) {
+  if (!DIFFS[id]) id = 'normal'; // id inválido? volta ao normal
+  S.difficulty = id; // guarda a dificuldade atual
+  try { localStorage.setItem(DIFF_KEY, id); } catch { /* privado */ }
+  // Marca o botão ativo no menu (só o escolhido fica com .active).
+  document.querySelectorAll('.diff-card').forEach(b => b.classList.toggle('active', b.dataset.diff === id));
+  // Atualiza a caixinha "COPOS INICIAIS" do menu.
+  const stat = $('stat-cups'); if (stat) stat.textContent = DIFFS[id].baseCups + ' 🥤';
+  updateDiffBadge(); // atualiza o selo da tela do jogo
+}
+/* loadDifficulty() lê a última dificuldade salva (ou 'normal'). */
+function loadDifficulty() {
+  try { const d = localStorage.getItem(DIFF_KEY); if (DIFFS[d]) S.difficulty = d; } catch { /* privado */ }
+}
+/* updateDiffBadge() redesenha o selo da dificuldade na tela do jogo. */
+function updateDiffBadge() {
+  const d = DIFFS[S.difficulty] || DIFFS.normal;
+  const badge = $('diff-badge');
+  if (badge) { badge.textContent = d.badge; badge.className = 'diff-badge ' + d.css; }
+}
 
 /* ================= 7. FLUXO DO JOGO (telas e fases) ================= */
 
@@ -254,17 +299,26 @@ function setPhase(phase, label) {
   el.classList.toggle('danger', phase === 'over'); // vermelho no game over
 }
 
-/* newGame() zera TUDO e começa uma run nova da rodada 1, com um deck inicial
-   didático (1 Olho + 1 Seguro) para o jogador aprender as cartas. */
+/* newGame() zera TUDO e começa uma run nova da rodada 1 na dificuldade
+   escolhida no menu. Deck inicial didático (1 Olho + 1 Seguro) só no
+   Normal/Místico — no DIFÍCIL o jogador começa sem poderes e não ganha nenhum. */
 function newGame() {
   S.round = 1; S.score = 0; S.maxMult = 1; // rodada, pontos e mult máximo zerados
   S.totalBallsFound = 0; S.cardsObtained = 0; // estatísticas zeradas
-  S.deck = { olho: 1, seguro: 1, duplicacao: 0 }; // deck inicial didático
+  // DIFÍCIL: sem poderes (deck vazio). Demais: deck inicial didático.
+  S.deck = S.difficulty === 'dificil'
+    ? { olho: 0, seguro: 0, duplicacao: 0 }
+    : { olho: 1, seguro: 1, duplicacao: 0 }; // deck inicial didático
   S.cardsUsedThisRound = new Set(); // limpa bônus de cartas
+  S.rewardPicksLeft = 0; S.rewardTotal = 0; S.rewardPts = 0; // limpa recompensa pendente
   S.shuffleToken++; // invalida qualquer embaralhamento anterior ainda rodando
+  $('reward-modal').classList.add('hidden'); // garante modal fechado ao recomeçar
   showScreen('game'); // vai para a tela do jogo
-  updateHUD(); // atualiza os números do topo
-  toast('🎯 Rodada 1 — memorize as bolinhas!', 'gold'); // boas-vindas
+  updateHUD(); updateDiffBadge(); // atualiza os números do topo + selo de dificuldade
+  const d = DIFFS[S.difficulty] || DIFFS.normal; // dados da dificuldade atual
+  // Toast inicial: no DIFÍCIL avisa que é sem poderes; nas demais mostra qtd/rodada.
+  const poderTxt = d.picks > 0 ? `${d.picks} poder${d.picks > 1 ? 'es' : ''}/rodada!` : '🚫 sem poderes!';
+  toast(`🎯 Rodada 1 ${d.icone} ${d.nome} — ${d.baseCups} copos! ${poderTxt}`, 'gold');
   startRound(); // inicia a rodada 1
 }
 
@@ -294,8 +348,9 @@ function startRound() {
    alguns segundos, depois abaixa e chama o embaralhamento. */
 async function runShowPhase(token) {
   setPhase('show', '👁️ Memorize onde estão as bolinhas!'); // selo da fase
-  // Linha de info: "Rodada 1 • 3 copos • 1 bolinha".
-  $('round-info').textContent = `Rodada ${S.round} • ${S.numCups} copos • ${S.numBalls} bolinha${S.numBalls > 1 ? 's' : ''}`;
+  // Linha de info: "Rodada 1 • 3 copos • 1 bolinha • 😌 NORMAL".
+  const d = DIFFS[S.difficulty] || DIFFS.normal;
+  $('round-info').textContent = `Rodada ${S.round} • ${S.numCups} copos • ${S.numBalls} bolinha${S.numBalls > 1 ? 's' : ''} • ${d.icone} ${d.nome}`;
   $('shuffle-progress').style.width = '0%'; // zera a barrinha de embaralhamento
   updateDeck(); // botões de carta ficam desligados fora da adivinhação
   // Revela SOMENTE os copos que têm bolinha (os demais ficam abaixados e vazios).
@@ -508,7 +563,8 @@ async function rotateAll(speed) {
 /* ================= 9. CARTAS / DECK ================= */
 
 /* updateDeck() redesenha o deck: quantidades, texto dos botões e se cada
-   botão está ligado (só na adivinhação, com carta em estoque E alvo válido). */
+   botão está ligado (só na adivinhação, com carta em estoque E alvo válido).
+   No DIFÍCIL todos os botões ficam desligados (sem poderes). */
 function updateDeck() {
   // Total de cartas para o "N cartas" do cabeçalho (singular/plural).
   const total = S.deck.olho + S.deck.seguro + S.deck.duplicacao;
@@ -517,7 +573,10 @@ function updateDeck() {
   $('qty-olho').textContent = S.deck.olho;
   $('qty-seguro').textContent = S.deck.seguro;
   $('qty-duplicacao').textContent = S.deck.duplicacao;
-  const can = S.phase === 'guess'; // cartas só funcionam adivinhando
+  // Dica do deck: no DIFÍCIL avisa que poderes estão desativados.
+  const hint = document.querySelector('.deck-hint');
+  if (hint) hint.textContent = S.difficulty === 'dificil' ? '🚫 Poderes desativados no DIFÍCIL' : 'Ative durante a adivinhação';
+  const can = S.phase === 'guess' && S.difficulty !== 'dificil'; // cartas só funcionam adivinhando e nunca no DIFÍCIL
   // Para cada botão USAR, decide se liga ou desliga…
   document.querySelectorAll('[data-use]').forEach(btn => {
     const id = btn.dataset.use; // 'olho' | 'seguro' | 'duplicacao'
@@ -534,9 +593,10 @@ function updateDeck() {
   });
 }
 
-/* useCard() é a porta de entrada dos 3 botões USAR: valida fase/estoque e
-   chama o efeito da carta pedida. */
+/* useCard() é a porta de entrada dos 3 botões USAR: bloqueia tudo no
+   DIFÍCIL (sem poderes), valida fase/estoque e chama o efeito da carta pedida. */
 function useCard(id) {
+  if (S.difficulty === 'dificil') { toast('🚫 Modo DIFÍCIL: sem poderes!', 'error'); return; }
   if (S.phase !== 'guess') { toast('⏳ Use cartas na hora de adivinhar!', 'error'); return; }
   if (S.deck[id] <= 0) { toast('🃏 Você não tem essa carta!', 'error'); return; }
   if (id === 'olho') return useOlho(); // 🔵 revela 1 bolinha rapidinho
@@ -545,7 +605,7 @@ function useCard(id) {
 }
 
 /* useOlho() — OLHO AGUÇADO 🔵: gasta 1 carta, sorteia uma bolinha ainda oculta,
-   levanta o copo com brilho azul por 0,6s e abaixa de novo. Rápido de propósito! */
+   levanta o copo com brilho azul por 0,2s e abaixa de novo. Bem rápido de propósito! */
 async function useOlho() {
   // Candidatos: copos com bola, ainda não achados e atualmente abaixados.
   const alvos = S.cups.filter(c => c.hasBall && !c.found && !c.el.classList.contains('lifted'));
@@ -559,7 +619,7 @@ async function useOlho() {
   // Explosãozinha azul no copo revelado para chamar atenção.
   const r = pick.el.getBoundingClientRect();
   burst(r.left + r.width / 2, r.top + 30, ['#60a5fa', '#22d3ee', '#fff'], 20, 4);
-  await sleep(CONFIG.olhoRevealMs); // espera 0,6s (tempo curto = desafio!)
+  await sleep(CONFIG.olhoRevealMs); // espera 0,2s (bem rápido = desafio!)
   // Abaixa de novo (só se ainda estiver adivinhando e ninguém clicou nele).
   if (S.phase === 'guess' && !pick.found) pick.el.classList.remove('lifted');
   pick.el.classList.remove('hint-glow'); // tira o brilho azul
@@ -626,7 +686,7 @@ function saveHigh() {
   try { localStorage.setItem(CONFIG.maxHighKey, String(S.high)); } catch { /* privado */ }
 }
 /* updateHUD() redesenha os 5 números do topo: rodada, pontos, recorde,
-   multiplicador e bolinhas achadas/total. */
+   multiplicador e bolinhas achadas/total. Também mantém o selo de dificuldade. */
 function updateHUD() {
   $('hud-round').textContent = S.round; // rodada atual
   $('hud-score').textContent = S.score.toLocaleString('pt-BR'); // pontos com milhar pt-BR
@@ -636,12 +696,15 @@ function updateHUD() {
   const m = multForRound(S.round); // multiplicador desta rodada
   $('hud-mult').textContent = 'x' + m.toFixed(1); // ex: "x1.4"
   $('hud-balls').textContent = `${S.foundCount}/${S.numBalls}`; // ex: "1/2"
+  updateDiffBadge(); // mantém o selo 😌/😈/🔮 sincronizado
 }
 
 /* ================= 11. VITÓRIA / RECOMPENSA ================= */
 
 /* winRound() roda ao achar TODAS as bolinhas: calcula pontos com o
-   multiplicador, revela tudo em verde, mostra VITÓRIA e abre o modal de carta. */
+   multiplicador, revela tudo em verde, mostra VITÓRIA e abre o modal de
+   poderes (1 no normal, 4 no místico). No DIFÍCIL (0 picks) pula o modal
+   e avança direto para a próxima rodada — sem ganhar poderes. */
 function winRound() {
   const token = S.shuffleToken; // token atual (para não abrir modal de run velha)
   S.phase = 'reward'; // trava cliques: fase de recompensa
@@ -663,10 +726,18 @@ function winRound() {
   msg.textContent = '✨ VITÓRIA! ✨'; msg.className = 'arena-message win';
   // Revela todas as bolinhas pintadas de verde.
   S.cups.forEach(c => { if (c.hasBall) { c.el.classList.add('lifted'); c.el.classList.add('correct'); } });
-  setPhase('reward', '🏆 Você achou todas! Escolha sua recompensa…'); // selo
+  const nPicks = picksForDiff(); // quantos poderes esta dificuldade dá (0 no DIFÍCIL)
+  // DIFÍCIL: sem poderes — não abre o modal, avança direto para a próxima rodada.
+  if (nPicks <= 0) {
+    setPhase('reward', '🏆 Você achou todas! Modo DIFÍCIL: sem poderes…'); // selo
+    $('round-info').textContent = `+${pts.toLocaleString('pt-BR')} pontos • mult x${mult.toFixed(1)}${bonusCartas ? ' • +bônus de cartas!' : ''}${dobrou ? ' • 🟢 PONTOS DOBRADOS!' : ''} • 🚫 sem poderes no DIFÍCIL`;
+    setTimeout(() => { if (token === S.shuffleToken) { S.round++; startRound(); } }, 1300);
+    return;
+  }
+  setPhase('reward', `🏆 Você achou todas! Escolha ${nPicks} poder${nPicks > 1 ? 'es' : ''}…`); // selo
   // Detalha os pontos ganhos na linha de info.
   $('round-info').textContent = `+${pts.toLocaleString('pt-BR')} pontos • mult x${mult.toFixed(1)}${bonusCartas ? ' • +bônus de cartas!' : ''}${dobrou ? ' • 🟢 PONTOS DOBRADOS!' : ''}`;
-  // Após 1,3s de comemoração, abre o modal para escolher a carta.
+  // Após 1,3s de comemoração, abre o modal para escolher os poderes.
   setTimeout(() => { if (token === S.shuffleToken) openReward(pts); }, 1300);
 }
 
@@ -677,31 +748,54 @@ function drawRewardOptions() {
   if (new Set(opts).size === 1) opts[1] = CARD_IDS[(CARD_IDS.indexOf(opts[0]) + 1) % 3]; // evita 3 iguais
   return opts;
 }
-/* openReward() monta e exibe o modal: título com a rodada, pontos ganhos e
-   os 3 cards clicáveis (cada clique chama pickReward uma única vez). */
+/* openReward() inicia a escolha de poderes: guarda os pontos e quantos
+   poderes faltam (1 normal • 4 místico) e desenha as ofertas.
+   No DIFÍCIL (0 picks) não há recompensa: avança direto. */
 function openReward(pts) {
+  if (picksForDiff() <= 0 || S.difficulty === 'dificil') {
+    S.round++; // próxima rodada sem poderes
+    startRound();
+    return;
+  }
+  S.rewardPts = pts; // guarda p/ exibir no modal
+  S.rewardTotal = picksForDiff(); // total desta recompensa (ex: 4 no místico)
+  S.rewardPicksLeft = S.rewardTotal; // ainda faltam todas
+  renderRewardOptions(); // desenha as 3 ofertas + textos
+  $('reward-modal').classList.remove('hidden'); // mostra o modal
+}
+/* renderRewardOptions() (re)desenha o modal: título, pontos, "restam X" e
+   as 3 cartas clicáveis. Chamada de novo a cada poder escolhido. */
+function renderRewardOptions() {
+  const d = DIFFS[S.difficulty] || DIFFS.normal;
   $('reward-round').textContent = S.round; // "RODADA 3 VENCIDA!"
-  $('reward-points').textContent = `+${pts.toLocaleString('pt-BR')} pontos • mult x${multForRound(S.round).toFixed(1)}`;
+  $('reward-points').textContent = `+${S.rewardPts.toLocaleString('pt-BR')} pontos • mult x${multForRound(S.round).toFixed(1)} • ${d.icone} ${d.nome}`;
+  // Texto "Escolha N poderes (restam M)": conta regressiva da recompensa.
+  const got = S.rewardTotal - S.rewardPicksLeft; // quantos já pegou
+  $('reward-sub').innerHTML = S.rewardTotal > 1
+    ? `Escolha <strong>${S.rewardTotal} poderes</strong> para o deck (restam <strong>${S.rewardPicksLeft}</strong> — ${got}/${S.rewardTotal}):`
+    : 'Escolha <strong>1 carta</strong> para adicionar ao seu deck:';
   const box = $('reward-cards'); // grade onde os 3 cards entram
-  box.innerHTML = ''; // limpa ofertas da vitória anterior
+  box.innerHTML = ''; // limpa ofertas anteriores
   // Cria um card por oferta sorteada…
   drawRewardOptions().forEach(id => {
     const c = CARDS[id]; // dados da carta (nome, ícone, cor, descrição)
-    const d = document.createElement('div'); // div do card
-    d.className = 'reward-card ' + c.cor; // cor da borda (blue/yellow/green)
-    d.innerHTML = `<span class="rc-icon">${c.icone}</span><b>${c.nome}</b><small>${c.desc}</small><span class="rc-pick">ADICIONAR AO DECK</span>`;
-    d.addEventListener('click', () => pickReward(id), { once: true }); // 1 clique = escolheu
-    box.appendChild(d);
+    const el = document.createElement('div'); // div do card
+    el.className = 'reward-card ' + c.cor; // cor da borda (blue/yellow/green)
+    el.innerHTML = `<span class="rc-icon">${c.icone}</span><b>${c.nome}</b><small>${c.desc}</small><span class="rc-pick">ADICIONAR AO DECK</span>`;
+    el.addEventListener('click', () => pickReward(id), { once: true }); // 1 clique = 1 poder
+    box.appendChild(el);
   });
-  $('reward-modal').classList.remove('hidden'); // mostra o modal
 }
-/* pickReward() aplica a escolha: soma a carta ao deck, fecha o modal, avança
-   a rodada e já começa a próxima. */
+/* pickReward() aplica 1 escolha: soma ao deck e, se ainda restam poderes
+   (místico com múltiplos picks), sorteia 3 novas ofertas; senão fecha e avança a rodada. */
 function pickReward(id) {
   S.deck[id]++; S.cardsObtained++; // +1 no deck e na estatística
+  S.rewardPicksLeft--; // consumiu 1 escolha
   sfx.card(); // som de carta
-  toast(`${CARDS[id].icone} ${CARDS[id].nome} adicionada ao deck!`, 'success'); // confirma
-  $('reward-modal').classList.add('hidden'); // fecha o modal
+  const got = S.rewardTotal - S.rewardPicksLeft;
+  toast(`${CARDS[id].icone} ${CARDS[id].nome} adicionada! (${got}/${S.rewardTotal})`, 'success');
+  if (S.rewardPicksLeft > 0) { renderRewardOptions(); return; } // ainda faltam poderes: novas ofertas
+  $('reward-modal').classList.add('hidden'); // acabou: fecha o modal
   S.round++; // próxima rodada (mais copos, mais velocidade!)
   startRound(); // começa a nova rodada
 }
@@ -713,6 +807,8 @@ function pickReward(id) {
 function gameOver(cup, reason) {
   S.shuffleToken++; // cancela qualquer animação/embaralhamento pendente
   S.phase = 'over'; // fase final: nada mais é clicável
+  S.rewardPicksLeft = 0; // cancela recompensa pendente (difícil/místico)
+  $('reward-modal').classList.add('hidden'); // fecha o modal se estava escolhendo poderes
   lockCups(true); refreshGuessable(); updateDeck(); // trava tudo e desliga cartas
   setPhase('over', '💀 Game Over!'); // selo vermelho
   // Revela onde estavam TODAS as bolinhas (para o jogador conferir).
@@ -735,11 +831,15 @@ function gameOver(cup, reason) {
 }
 
 /* showGameOver() preenche a tela final: motivo, rodada, pontos, recorde,
-   bolinhas, mult máximo, cartas ganhas e o deck restante. */
+   bolinhas, mult máximo, cartas ganhas, dificuldade e o deck restante. */
 function showGameOver(reason, isRecord) {
   showScreen('over'); // troca para a tela de game over
-  // Frase do motivo + contexto ("Era a rodada 4 com 6 copos e 1 bolinha.").
-  $('go-reason').textContent = reason + ` Era a rodada ${S.round} com ${S.numCups} copos e ${S.numBalls} bolinha${S.numBalls > 1 ? 's' : ''}.`;
+  const d = DIFFS[S.difficulty] || DIFFS.normal; // dificuldade da run que acabou
+  // Frase do motivo + contexto ("Era a rodada 4 com 6 copos e 1 bolinha no MÍSTICO.").
+  $('go-reason').textContent = reason + ` Era a rodada ${S.round} com ${S.numCups} copos e ${S.numBalls} bolinha${S.numBalls > 1 ? 's' : ''} no ${d.nome}.`;
+  // Selo da dificuldade jogada (ex: "🔮 Dificuldade: MÍSTICO • 6 copos • 4 poderes/rodada" ou "😈 Dificuldade: DIFÍCIL • 4 copos • sem poderes").
+  const poderTxt = d.picks > 0 ? `${d.picks} poder${d.picks > 1 ? 'es' : ''}/rodada` : '🚫 sem poderes';
+  $('go-diff').textContent = `${d.icone} Dificuldade: ${d.nome} • ${d.baseCups} copos iniciais • ${poderTxt}`;
   $('go-emoji').textContent = ['💀', '😵', '🤯', '👻'][rand(4)]; // caveirinha aleatória
   $('go-round').textContent = S.round; // rodada alcançada
   $('go-score').textContent = S.score.toLocaleString('pt-BR'); // pontuação final
@@ -759,22 +859,24 @@ function showGameOver(reason, isRecord) {
 
 /* ================= 12. BINDINGS + BOOT ================= */
 
-/* bindUI() liga TODOS os botões do jogo às suas ações (menu, mudo, deck,
-   desistir, recomeçar) e registra o redimensionamento do canvas. */
+/* bindUI() liga TODOS os botões do jogo às suas ações (menu, dificuldade,
+   mudo, deck, desistir, recomeçar) e registra o redimensionamento do canvas. */
 function bindUI() {
-  // Botão "JOGAR AGORA" do menu → começa run nova.
+  // Botão "JOGAR AGORA" do menu → começa run nova na dificuldade escolhida.
   $('btn-start').addEventListener('click', () => { sfx.click(); newGame(); });
+  // Cartões de dificuldade do menu → trocam Normal / Difícil / Místico.
+  document.querySelectorAll('.diff-card').forEach(b => b.addEventListener('click', () => { sfx.click(); setDifficulty(b.dataset.diff); }));
   // Botão "JOGAR DE NOVO" do game over → começa run nova.
   $('btn-again').addEventListener('click', () => { sfx.click(); newGame(); });
   // Botão "MENU" do game over → cancela animações e volta ao menu.
-  $('btn-menu').addEventListener('click', () => { sfx.click(); S.shuffleToken++; showScreen('menu'); updateHUD(); });
+  $('btn-menu').addEventListener('click', () => { sfx.click(); S.shuffleToken++; S.rewardPicksLeft = 0; $('reward-modal').classList.add('hidden'); showScreen('menu'); updateHUD(); });
   // Botão "Recomeçar" na partida → começa run nova do zero.
   $('btn-restart').addEventListener('click', () => { sfx.click(); newGame(); });
   // Botão "Desistir": com pontos, conta como derrota; sem pontos, só volta ao menu.
   $('btn-quit').addEventListener('click', () => {
     sfx.click();
     if (S.score > 0) gameOver(null, 'Você desistiu da run.');
-    else { S.shuffleToken++; showScreen('menu'); }
+    else { S.shuffleToken++; S.rewardPicksLeft = 0; $('reward-modal').classList.add('hidden'); showScreen('menu'); }
   });
   // Botão "COMO JOGAR" → mostra/esconde o tutorial.
   $('btn-how').addEventListener('click', () => { sfx.click(); $('howto').classList.toggle('hidden'); });
@@ -792,8 +894,10 @@ function bindUI() {
 
 /* ---- BOOT: sequência de inicialização ao abrir a página ---- */
 loadHigh(); // 1) carrega o recorde salvo no navegador
-sizeCanvas(); // 2) ajusta o canvas de partículas ao tamanho da tela
-loopParticles(); // 3) inicia o loop infinito das partículas de fundo
-bindUI(); // 4) liga todos os botões
-updateHUD(); // 5) escreve os números iniciais (0, recorde etc.)
-showScreen('menu'); // 6) mostra a tela do menu (ponto de partida)
+loadDifficulty(); // 2) carrega a última dificuldade escolhida
+sizeCanvas(); // 3) ajusta o canvas de partículas ao tamanho da tela
+loopParticles(); // 4) inicia o loop infinito das partículas de fundo
+bindUI(); // 5) liga todos os botões (inclui as dificuldades)
+setDifficulty(S.difficulty); // 6) aplica a dificuldade salva nos botões/selos
+updateHUD(); // 7) escreve os números iniciais (0, recorde etc.)
+showScreen('menu'); // 8) mostra a tela do menu (ponto de partida)

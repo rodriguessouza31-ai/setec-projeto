@@ -178,6 +178,39 @@ body {
 /* Linha de botões do menu (JOGAR + COMO JOGAR). */
 .menu-buttons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 8px; }
 
+/* ---------- escolha de dificuldade (Normal / Difícil / Místico) ---------- */
+.diff-select { margin: 0 auto 20px; max-width: 680px; }
+.diff-select h3 { font-family: var(--font-display); font-size: 14px; letter-spacing: 2px; color: var(--muted); margin-bottom: 12px; }
+.diff-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.diff-card {
+  font-family: var(--font-body); color: var(--text); cursor: pointer;
+  background: rgba(0,0,0,.35); border: 2px solid var(--line); border-radius: 16px;
+  padding: 14px 10px; display: flex; flex-direction: column; gap: 6px; align-items: center;
+  transition: transform .18s, box-shadow .2s, border-color .2s;
+}
+.diff-card b { font-family: var(--font-display); font-size: 15px; letter-spacing: 1px; }
+.diff-card small { color: var(--muted); font-size: 13px; line-height: 1.35; }
+.diff-icon { font-size: 30px; }
+.diff-power { font-size: 12px; font-weight: 700; background: rgba(255,255,255,.08); padding: 5px 12px; border-radius: 20px; }
+.diff-card:hover { transform: translateY(-3px); }
+.diff-card.active { border-color: var(--cyan); box-shadow: 0 0 24px rgba(34,211,238,.35); background: rgba(34,211,238,.08); }
+.diff-card.hard.active { border-color: #fb923c; box-shadow: 0 0 24px rgba(251,146,60,.4); background: rgba(251,146,60,.1); }
+.diff-card.mystic.active { border-color: var(--pink); box-shadow: 0 0 24px rgba(244,114,182,.45); background: rgba(244,114,182,.1); }
+
+/* Selo da dificuldade na tela do jogo + tela de game over. */
+.diff-badge {
+  display: inline-block; margin-top: 8px; font-family: var(--font-display); font-size: 12px; font-weight: 700;
+  letter-spacing: 1px; padding: 6px 16px; border-radius: 20px; border: 1px solid var(--line);
+  background: rgba(255,255,255,.05); color: var(--text);
+}
+.diff-badge.diff-dificil { border-color: rgba(251,146,60,.6); color: #fed7aa; }
+.diff-badge.diff-mistico { border-color: rgba(244,114,182,.6); color: #fbcfe8; }
+.go-diff {
+  display: inline-block; font-family: var(--font-display); font-size: 13px; font-weight: 700; letter-spacing: 1px;
+  border: 1px solid var(--line); border-radius: 20px; padding: 7px 18px; margin-bottom: 14px;
+  background: rgba(255,255,255,.05);
+}
+
 /* ---------- botões ----------
    .btn = base; .btn-primary = verde-ciano; .btn-ghost = transparente. */
 .btn {
@@ -479,6 +512,7 @@ body {
   .btn-card { width: auto; margin-left: auto; } /* USAR alinhado à direita */
   .reward-cards { grid-template-columns: 1fr; } /* 1 opção por linha */
   .preview-grid { grid-template-columns: 1fr; } /* prévia empilhada */
+  .diff-grid { grid-template-columns: 1fr; } /* dificuldades empilhadas no celular */
   .go-grid { grid-template-columns: repeat(2, 1fr); } /* stats 2x3 */
   .menu-hero { padding: 26px 16px; } /* menu mais compacto */
   .arena { min-height: 260px; } /* arena mais baixa */

@@ -47,7 +47,7 @@ python3 -m http.server 8000
 
 | Carta | Efeito | Estratégia |
 |---|---|---|
-| 🔵 **Olho Aguçado** | Revela 1 bolinha por 1,2s | Aumenta moderadamente a chance de acerto |
+| 🔵 **Olho Aguçado** | Revela 1 bolinha por 0,2s | Aumenta moderadamente a chance de acerto |
 | 🟡 **Copo Seguro** | Remove 1 copo vazio | Só funciona se houver copo sem bolinha |
 | 🟢 **Duplicação** | Cria +2 bolinhas em copos válidos | Muito poderosa (+pontos), mas +risco (precisa achar todas) |
 
