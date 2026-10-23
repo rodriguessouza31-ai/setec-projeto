@@ -74,16 +74,16 @@ body {
    - .bg-floaters = fundo do jogo (atrás do conteúdo, sem clique)
    - .menu-floaters = vitrine dentro do menu principal */
 .bg-floaters { position: fixed; inset: 0; z-index: 1; pointer-events: none; overflow: hidden; }
-.bg-floater { position: absolute; pointer-events: none; user-select: none; opacity: .28; }
+.bg-floater { position: absolute; pointer-events: none; user-select: none; opacity: .42; }
 .floater-left {
   top: 12%; left: 4%; width: clamp(140px, 22vw, 260px); aspect-ratio: 16/9; object-fit: cover;
-  border-radius: 18px; border: 1px solid rgba(34,211,238,.4);
-  box-shadow: 0 0 30px rgba(34,211,238,.25); opacity: .22;
+  border-radius: 18px; border: 1px solid rgba(34,211,238,.55);
+  box-shadow: 0 0 34px rgba(34,211,238,.35); opacity: .38;
   animation: bg-slide-a 9s ease-in-out infinite alternate;
 }
 .floater-right {
   bottom: 8%; right: 4%; width: clamp(90px, 14vw, 160px); aspect-ratio: 1/1; object-fit: contain;
-  filter: drop-shadow(0 0 18px rgba(244,114,182,.55)); opacity: .5;
+  filter: drop-shadow(0 0 20px rgba(244,114,182,.65)); opacity: .68;
   animation: bg-slide-b 11s ease-in-out infinite alternate;
 }
 @keyframes bg-slide-a { from { transform: translateX(-6vw); } to { transform: translateX(6vw); } }
@@ -519,8 +519,8 @@ body {
   .topbar { padding: 10px 0; } /* topo compacto */
   .logo-text { font-size: 15px; } /* logo menor */
   .cup-slot.lifted .cup-body { transform: translateY(-62px) rotate(-5deg); } /* levantamento menor: arena mais baixa */
-  .floater-left { top: 8%; opacity: .16; } /* fundo mais discreto no celular */
-  .floater-right { bottom: 4%; opacity: .38; }
+  .floater-left { top: 8%; opacity: .30; } /* fundo mais discreto no celular */
+  .floater-right { bottom: 4%; opacity: .55; }
   .menu-floaters { gap: 12px; } /* vitrine mais junta no celular */
 }
 @media (max-width: 380px) {
