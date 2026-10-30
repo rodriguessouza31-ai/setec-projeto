@@ -38,8 +38,8 @@ python3 -m http.server 8000
    - Achou todas → próxima rodada + pontos + **1 carta de recompensa**.
    - Abriu 1 copo vazio → **GAME OVER**.
 4. **Progressão roguelike:**
-   - `+1 copo por rodada` (3 → 4 → 5 … até 10).
-   - `+1 bolinha a cada 5 rodadas` (sempre em copos diferentes).
+    - `+1 copo por rodada` (3 → 4 → 5 … até 20, com copos que encolhem para caber).
+    - `+1 bolinha a cada 5 rodadas` (sempre em copos diferentes).
    - Velocidade, nº de movimentos e complexidade (trocas duplas, giros triplos, rotações) aumentam.
 5. **Cartas** — ative na hora de adivinhar pelo deck (quantidade, nome, cor, ícone, descrição e botão USAR).
 

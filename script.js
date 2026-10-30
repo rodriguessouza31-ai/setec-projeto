@@ -34,11 +34,11 @@
 const CONFIG = {
   baseCups: 3,          // quantidade de copos na rodada 1
   cupsPerRound: 1,      // quantos copos novos entram a cada rodada (+1)
-  maxCups: 10,          // teto de copos (para caber na tela do celular e PC)
+  maxCups: 20,          // teto de copos (até 20 — arena adapta o tamanho p/ caber)
   baseBalls: 1,         // bolinhas na rodada 1
   ballEveryNRounds: 5,  // a cada 5 rodadas entra +1 bolinha
   maxBaseBalls: 4,      // teto de bolinhas do sorteio base (sem contar Duplicação)
-  maxMoves: 30,         // teto de movimentos do embaralhamento por rodada
+  maxMoves: 36,         // teto de movimentos do embaralhamento por rodada
   showTimeBase: 2100,   // ms que as bolinhas ficam visíveis (diminui por rodada)
   olhoRevealMs: 200,    // TEMPO do Olho Aguçado: revela 1 bolinha por 0,2s (bem rápido!)
   maxHighKey: 'coposMisticosHigh_v1', // chave do recorde no localStorage
@@ -148,22 +148,23 @@ const sfx = {
 
 /* ================= 4. PARTÍCULAS ================= */
 
-/* bgCanvas é o <canvas> fixo atrás de tudo; bctx é o pincel 2D dele. */
+/* bgCanvas é o <canvas> das explosões/confetes do jogo; bctx é o pincel 2D.
+   O fundo espacial (aurora, ondas e estrelas) agora vive no #home-canvas. */
 const bgCanvas = document.getElementById('bg-particles');
 const bctx = bgCanvas.getContext('2d');
-/* stars = poeira neon flutuando no fundo; bursts = explosões temporárias. */
+/* stars ficou vazio (fundo antigo removido); bursts = explosões temporárias. */
 let stars = [], bursts = [];
-/* sizeCanvas() ajusta o canvas ao tamanho da janela e cria as estrelinhas
-   com posição, tamanho, velocidade, cor e transparência aleatórias. */
+let particlesRaf = 0; // id do requestAnimationFrame do canvas de partículas
+/* sizeCanvas() ajusta o canvas de explosões ao tamanho da janela. */
 function sizeCanvas() {
   bgCanvas.width = innerWidth; bgCanvas.height = innerHeight; // canvas ocupa a tela toda
-  // Cria ~1 estrela a cada 10px de largura (máx 110 para não pesar).
-  stars = Array.from({ length: Math.min(110, innerWidth / 10) }, () => ({
-    x: Math.random() * bgCanvas.width, y: Math.random() * bgCanvas.height, // posição inicial
-    r: Math.random() * 2 + 0.4, s: Math.random() * 0.5 + 0.15,             // raio e velocidade de queda
-    c: ['#22d3ee', '#a78bfa', '#f472b6', '#fbbf24'][Math.floor(Math.random() * 4)], // cor neon
-    a: Math.random() * 0.7 + 0.2, // transparência
-  }));
+  stars = []; // o fundo neon antigo foi substituído pelo fundo espacial
+}
+/* startParticles() liga o loop do canvas somente quando há algo para desenhar.
+   Sem partículas o loop fica parado, economizando CPU/bateria. */
+function startParticles() {
+  if (particlesRaf || document.hidden) return;
+  particlesRaf = requestAnimationFrame(loopParticles);
 }
 /* burst() cria uma explosão de n partículas coloridas num ponto (x,y),
    voando para todas as direções com a força "power". */
@@ -173,11 +174,15 @@ function burst(x, y, colors, n = 26, power = 5) {
     // Cada partícula tem velocidade, vida (1→0), tamanho e cor alternada.
     bursts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 1.5, life: 1, r: Math.random() * 3.5 + 1.5, c: colors[i % colors.length] });
   }
+  startParticles(); // acorda o loop (que fica ocioso quando não há partículas)
 }
 /* confettiScreen() é o confete grande no centro da tela (vitórias). */
 function confettiScreen(n = 80) { burst(innerWidth / 2, innerHeight * 0.35, ['#22d3ee', '#34d399', '#fbbf24', '#f472b6', '#a78bfa'], n, 7); }
-/* loopParticles() redesenha fundo + explosões a cada frame (~60fps). */
+/* loopParticles() redesenha as explosões a cada frame (~60fps) e se desliga
+   automaticamente quando a última partícula some. */
 function loopParticles() {
+  particlesRaf = 0; // este frame já foi consumido
+  if (!stars.length && !bursts.length) return; // nada para desenhar: encerra o loop
   bctx.clearRect(0, 0, bgCanvas.width, bgCanvas.height); // apaga o frame anterior
   // Desenha e faz cada estrela cair devagar; quem sai embaixo volta em cima.
   for (const st of stars) {
@@ -194,8 +199,16 @@ function loopParticles() {
     bctx.beginPath(); bctx.arc(p.x, p.y, p.r * p.life + 0.4, 0, 7); bctx.fill();
   }
   bctx.globalAlpha = 1;
-  requestAnimationFrame(loopParticles); // agenda o próximo frame (loop infinito)
+  if (!document.hidden) particlesRaf = requestAnimationFrame(loopParticles); // agenda o próximo
 }
+/* Pausa o canvas quando a aba fica oculta e retoma (se preciso) ao voltar. */
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    if (particlesRaf) { cancelAnimationFrame(particlesRaf); particlesRaf = 0; }
+  } else if (bursts.length || stars.length) {
+    startParticles();
+  }
+});
 
 /* ================= 5. UTILIDADES ================= */
 
@@ -229,21 +242,24 @@ function baseCupsForDiff() { return (DIFFS[S.difficulty] || DIFFS.normal).baseCu
    (normal=1, dificil=0, mistico=4). */
 function picksForDiff() { return (DIFFS[S.difficulty] || DIFFS.normal).picks; }
 /* cupsForRound() calcula os copos da rodada r: base da dificuldade +1 por
-   rodada, até o teto de 10. Ex: normal 3,4,5… | dificil 4,5,6… | mistico 6,7,8… */
+   rodada, até o teto de 20. Ex: normal 3,4,5… | dificil 4,5,6… | mistico 6,7,8… */
 function cupsForRound(r) { return Math.min(baseCupsForDiff() + (r - 1) * CONFIG.cupsPerRound, CONFIG.maxCups); }
 /* baseBallsForRound() calcula as bolinhas da rodada r: +1 a cada 5 rodadas,
    nunca mais que (copos-1) e nunca mais que o teto. */
 function baseBallsForRound(r) {
+  // No DIFÍCIL a quantidade de bolinhas NÃO aumenta com as rodadas.
+  if (S.difficulty === 'dificil') return Math.min(CONFIG.baseBalls, cupsForRound(r) - 1);
   const b = CONFIG.baseBalls + Math.floor((r - 1) / CONFIG.ballEveryNRounds);
   return Math.min(b, cupsForRound(r) - 1, CONFIG.maxBaseBalls);
 }
-/* speedForRound() calcula os ms de CADA movimento: começa ~600ms e cai até
-   o mínimo de 165ms (embaralhamento cada vez mais rápido). */
+/* speedForRound() calcula os ms de CADA movimento: começa ~650ms e cai
+   suavemente até um mínimo de 300ms — sempre visível a olho nu, mas um
+   pouco mais rápido nas rodadas altas. */
 function speedForRound(r) {
-  return Math.max(640 - r * 34 - S.numCups * 8, 165);
+  return Math.max(700 - r * 26 - S.numCups * 7, 300);
 }
 /* movesForRound() calcula QUANTOS movimentos há no embaralhamento: cresce
-   com a rodada e com os copos, até o teto de 30. */
+   com a rodada e com os copos, até o teto de 36. */
 function movesForRound(r) {
   return Math.min(6 + r * 2 + S.numCups, CONFIG.maxMoves);
 }
@@ -282,6 +298,8 @@ function updateDiffBadge() {
    'over' (mostra a section screen-gameover). Rola para o topo. */
 function showScreen(name) {
   S.screen = name; // guarda a tela atual no estado
+  // As imagens de fundo só aparecem durante a partida.
+  document.body.classList.toggle('playing', name === 'game');
   // Esconde todas as telas…
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   // …e mostra só a pedida ('over' usa o id screen-gameover, as outras seguem o nome).
@@ -456,6 +474,11 @@ async function onCupClick(i) {
 function renderCups() {
   const wrap = $('cups'); // contêiner flex onde os copos vivem
   wrap.innerHTML = ''; // limpa copos da rodada anterior
+  // Densidade: encolhe os copos quando há muitos, para até 20 caberem.
+  //  - até 8: normal • 9-12: compacto • 13-16: denso • 17+: super-denso
+  wrap.classList.toggle('many', S.numCups >= 9 && S.numCups <= 12);
+  wrap.classList.toggle('crowded', S.numCups >= 13 && S.numCups <= 16);
+  wrap.classList.toggle('packed', S.numCups >= 17);
   $('arena-message').classList.add('hidden'); // esconde "VITÓRIA/ERROU" antigo
   // Monta um copo por vez…
   S.cups.forEach((cup, i) => {
@@ -472,6 +495,14 @@ function renderCups() {
     // Clique: descobre o índice ATUAL do copo (muda a cada troca!) e chama onCupClick.
     d.addEventListener('click', () => onCupClick(S.cups.indexOf(cup)));
     cup.el = d; // guarda a div no objeto do copo (para animar depois)
+    // Entrada em cascata: cada copo surge com um pequeno atraso em relação ao anterior.
+    d.classList.add('cup-enter');
+    d.style.animationDelay = (i * 35) + 'ms';
+    const clearEnter = () => { d.classList.remove('cup-enter'); d.style.animationDelay = ''; };
+    d.addEventListener('animationend', (ev) => {
+      if (ev.target === d && ev.animationName === 'cupIn') clearEnter();
+    });
+    setTimeout(clearEnter, 700 + i * 35); // garante a limpeza mesmo com movimento reduzido
     wrap.appendChild(d); // coloca o copo na arena
   });
 }
@@ -487,6 +518,16 @@ function refreshGuessable() {
   const g = S.phase === 'guess'; // só há clicáveis na fase de adivinhação
   S.cups.forEach(c => c.el.classList.toggle('guessable', g && !c.eliminated && !c.found));
 }
+/* syncCupDom() deixa as divs no DOM na MESMA ordem de S.cups movendo só os
+   copos fora de lugar (evita reanexar todos a cada troca, que é caro). */
+function syncCupDom() {
+  const wrap = $('cups');
+  let ref = wrap.firstChild; // primeiro copo ainda não confirmado
+  for (const c of S.cups) {
+    if (c.el === ref) ref = ref.nextSibling; // já está no lugar: avança
+    else wrap.insertBefore(c.el, ref);       // fora de lugar: move para cá
+  }
+}
 
 /* swapCups() anima a troca de 2 copos com a técnica FLIP (responsiva: funciona
    até com quebra de linha no celular): mede posições, reordena o DOM, anima. */
@@ -497,7 +538,7 @@ async function swapCups(i, j, speed) {
   const before = new Map(S.cups.map(c => [c.id, c.el.getBoundingClientRect()]));
   // 2) Troca no array lógico E reordena as divs no DOM para a nova ordem.
   [S.cups[i], S.cups[j]] = [S.cups[j], S.cups[i]];
-  S.cups.forEach(c => wrap.appendChild(c.el));
+  syncCupDom();
   // Marca os dois como "trocando" (brilho violeta) e toca o som.
   S.cups[i].el.classList.add('swapping'); S.cups[j].el.classList.add('swapping');
   sfx.swap();
@@ -536,7 +577,7 @@ async function rotateAll(speed) {
   // Fotografa posições ANTES de mudar (ordem importa: medir primeiro!).
   const before = new Map(S.cups.map(c => [c.id, c.el.getBoundingClientRect()]));
   const first = S.cups.shift(); S.cups.push(first); // tira o 1º e joga no fim
-  S.cups.forEach(c => wrap.appendChild(c.el)); // reordena as divs no DOM
+  syncCupDom(); // reordena as divs no DOM movendo só as necessárias
   sfx.swap(); // som de movimento
   // INVERT: puxa cada copo de volta ao lugar antigo (sem animação)…
   S.cups.forEach(c => {
@@ -857,6 +898,17 @@ function showGameOver(reason, isRecord) {
     : '<span>Deck vazio — colecione cartas vencendo rodadas!</span>';
 }
 
+/* exitGame() — botão "Sair" do MENU: tenta fechar a aba/janela.
+   Navegadores bloqueiam window.close() se a aba não foi aberta por script;
+   nesse caso, avisa para fechar a aba manualmente. */
+function exitGame() {
+  toast('👋 Até logo! Feche a aba para sair.', '');
+  // Tenta fechar (funciona em popups/janelas abertas pelo jogo, ex: Electron/Tauri).
+  try { window.close(); } catch { /* bloqueado: mantém toast */ }
+  // Fallback comum: open('', '_self').close() em alguns navegadores.
+  try { const w = window.open('', '_self'); if (w) w.close(); } catch { /* ignorado */ }
+}
+
 /* ================= 12. BINDINGS + BOOT ================= */
 
 /* bindUI() liga TODOS os botões do jogo às suas ações (menu, dificuldade,
@@ -872,6 +924,8 @@ function bindUI() {
   $('btn-menu').addEventListener('click', () => { sfx.click(); S.shuffleToken++; S.rewardPicksLeft = 0; $('reward-modal').classList.add('hidden'); showScreen('menu'); updateHUD(); });
   // Botão "Recomeçar" na partida → começa run nova do zero.
   $('btn-restart').addEventListener('click', () => { sfx.click(); newGame(); });
+  // Botão "✕ Sair" — existe SOMENTE no menu → tenta sair/fechar o jogo.
+  $('btn-exit-menu').addEventListener('click', () => { sfx.click(); exitGame(); });
   // Botão "Desistir": com pontos, conta como derrota; sem pontos, só volta ao menu.
   $('btn-quit').addEventListener('click', () => {
     sfx.click();
@@ -896,8 +950,359 @@ function bindUI() {
 loadHigh(); // 1) carrega o recorde salvo no navegador
 loadDifficulty(); // 2) carrega a última dificuldade escolhida
 sizeCanvas(); // 3) ajusta o canvas de partículas ao tamanho da tela
-loopParticles(); // 4) inicia o loop infinito das partículas de fundo
+// 4) (as partículas agora rodam sob demanda: o loop só liga ao criar uma explosão)
 bindUI(); // 5) liga todos os botões (inclui as dificuldades)
 setDifficulty(S.difficulty); // 6) aplica a dificuldade salva nos botões/selos
 updateHUD(); // 7) escreve os números iniciais (0, recorde etc.)
 showScreen('menu'); // 8) mostra a tela do menu (ponto de partida)
+
+/* ================= 13. TELA INICIAL (CAPA) =================
+   Desenha as estrelas fixas e as estrelas cadentes no canvas da capa
+   e trata o botão ENTRAR, que esconde a capa e revela o menu do jogo. */
+(function initHomeScreen() {
+  const home = document.getElementById('home-screen');
+  const canvas = document.getElementById('home-canvas');
+  const btnEnter = document.getElementById('btn-enter');
+  if (!home || !canvas || !btnEnter) return; // segurança: sem capa, segue o jogo normal
+
+  const ctx = canvas.getContext('2d');
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const stars = [];
+  const meteors = [];
+  let W = 0, H = 0, raf = 0, running = true, last = 0, spawnTimer = 0;
+
+  // Troca as duas imagens de lado com fade (elas somem antes de mudar de
+  // posição, então nunca se atravessam nem se tocam).
+  const ballInner = home.querySelector('.ball-inner');
+  const orbHolders = ballInner ? Array.from(ballInner.querySelectorAll('.orb-holder')) : [];
+  let swapTimer = 0;
+  function swapImages() {
+    if (orbHolders.length < 2 || demoStopped) return;
+    orbHolders.forEach(h => h.classList.add('is-fading'));
+    window.setTimeout(() => {
+      orbHolders.forEach(h => {
+        h.classList.toggle('pos-left');
+        h.classList.toggle('pos-right');
+      });
+      void ballInner.offsetWidth; // aplica a nova posição antes de reaparecer
+      orbHolders.forEach(h => h.classList.remove('is-fading'));
+    }, 560);
+  }
+  function startSwaps() {
+    if (orbHolders.length < 2 || swapTimer || demoStopped) return;
+    swapTimer = window.setInterval(swapImages, 4500);
+  }
+  function stopSwaps() {
+    if (swapTimer) { clearInterval(swapTimer); swapTimer = 0; }
+  }
+
+  // Tempos do ciclo da bola: imagens → demo no centro → imagens voltam.
+  const IMAGE_PHASE_MS = 7000;        // quanto tempo as imagens ficam visíveis
+  const DEMO_ROUNDS = 3;              // rodadas da demo antes de as imagens voltarem
+  const DEMO_ROUND_GAP = 700;         // pausa entre rodadas da demo
+  const IMAGES_RETURN_DELAY_MS = 1800; // demora extra para as imagens voltarem
+
+  // Mini demonstração do jogo dentro da bola: os copos se embaralham e a
+  // bolinha é revelada no final. A bolinha fica sempre na posição central.
+  const demoCups = Array.from(home.querySelectorAll('.demo-cup'));
+  const demoBall = home.querySelector('.demo-ball');
+  const DEMO_POS = [20, 50, 80]; // centros dos copos, em % do palco
+  let demoStopped = false;
+
+  function demoAssign(cup, slot) {
+    cup.dataset.slot = String(slot);
+    cup.style.left = DEMO_POS[slot] + '%';
+  }
+
+  function setDemoBall(pos) {
+    if (demoBall) demoBall.style.left = DEMO_POS[pos] + '%';
+  }
+
+  async function playDemoRound() {
+    if (!demoBall || demoCups.length !== 3 || demoStopped) return;
+
+    // Reset sem animação: copos em 0,1,2 e bolinha no meio.
+    demoCups.forEach((cup, i) => {
+      cup.style.transition = 'none';
+      cup.classList.remove('lift');
+      cup.style.zIndex = '2';
+      demoAssign(cup, i);
+    });
+    setDemoBall(1);
+    demoBall.classList.remove('is-visible');
+    void home.offsetWidth; // aplica o reset antes de religar a transição
+    demoCups.forEach(cup => { cup.style.transition = ''; });
+
+    await sleep(650);
+    if (demoStopped) return;
+
+    // Revela a bolinha levantando o copo do meio.
+    demoBall.classList.add('is-visible');
+    demoCups[1].classList.add('lift');
+    await sleep(1000);
+    if (demoStopped) return;
+    demoCups[1].classList.remove('lift');
+    await sleep(250);
+    demoBall.classList.remove('is-visible');
+    await sleep(300);
+    if (demoStopped) return;
+
+    // Embaralha com 4 trocas de posição entre os copos.
+    for (let k = 0; k < 4 && !demoStopped; k++) {
+      const a = rand(3);
+      let b = rand(2);
+      if (b >= a) b++; // garante que b seja diferente de a
+      const cupA = demoCups.find(c => +c.dataset.slot === a);
+      const cupB = demoCups.find(c => +c.dataset.slot === b);
+      demoAssign(cupA, b);
+      demoAssign(cupB, a);
+      cupA.style.zIndex = '3';
+      cupB.style.zIndex = '2';
+      await sleep(560);
+    }
+    if (demoStopped) return;
+
+    // Levanta o copo que ficou sobre a bolinha.
+    const winner = demoCups.find(c => +c.dataset.slot === 1) || demoCups[0];
+    winner.classList.add('lift');
+    demoBall.classList.add('is-visible');
+    await sleep(1200);
+    if (demoStopped) return;
+    winner.classList.remove('lift');
+    await sleep(250);
+    demoBall.classList.remove('is-visible');
+    await sleep(400);
+  }
+
+  // Ciclo da bola: mostra as imagens, faz elas sumirem, roda a demo no
+  // centro e só depois de um bom tempo traz as imagens de volta.
+  async function ballLifecycle() {
+    if (!demoBall || demoCups.length !== 3) return;
+    startSwaps();
+    while (!demoStopped) {
+      await sleep(IMAGE_PHASE_MS); // imagens aparecendo/trocando
+      if (demoStopped) return;
+
+      stopSwaps();
+      ballInner.classList.add('images-out'); // imagens somem
+      await sleep(700);
+      if (demoStopped) return;
+
+      ballInner.classList.add('demo-on'); // demo aparece no centro
+      await sleep(500);
+      for (let r = 0; r < DEMO_ROUNDS && !demoStopped; r++) {
+        await playDemoRound();
+        if (demoStopped) return;
+        await sleep(DEMO_ROUND_GAP);
+      }
+      if (demoStopped) return;
+
+      ballInner.classList.remove('demo-on'); // demo some
+      ballInner.classList.add('demo-closing');
+      await sleep(450);
+      ballInner.classList.remove('demo-closing');
+      if (demoStopped) return;
+      await sleep(450);
+      if (demoStopped) return;
+
+      // Espera extra antes de as imagens voltarem (tempo aumentado).
+      await sleep(IMAGES_RETURN_DELAY_MS);
+      if (demoStopped) return;
+
+      ballInner.classList.remove('images-out'); // imagens voltam
+      await sleep(700);
+      if (demoStopped) return;
+      startSwaps();
+    }
+  }
+  ballLifecycle();
+
+  document.body.classList.add('home-lock'); // sem rolagem atrás da capa
+
+  function resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = document.documentElement.clientWidth || window.innerWidth;
+    H = document.documentElement.clientHeight || window.innerHeight;
+    canvas.width = Math.floor(W * dpr);
+    canvas.height = Math.floor(H * dpr);
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    buildStars();
+    if (reduced) drawStill();
+  }
+
+  function buildStars() {
+    stars.length = 0;
+    const count = Math.round((W * H) / 9000); // densidade proporcional à tela
+    for (let i = 0; i < count; i++) {
+      stars.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        r: Math.random() * 1.4 + 0.35,
+        a: Math.random() * 0.6 + 0.25,
+        tw: Math.random() * Math.PI * 2,
+        ts: Math.random() * 0.02 + 0.006,
+      });
+    }
+  }
+
+  function spawnMeteor() {
+    const speed = Math.random() * 4 + 3.5;
+    meteors.push({
+      x: Math.random() * W * 0.9 + W * 0.05,
+      y: Math.random() * H * 0.35,
+      vx: -speed * 0.8,
+      vy: speed,
+      len: Math.random() * 90 + 70,
+      life: 1,
+      decay: Math.random() * 0.004 + 0.004,
+      w: Math.random() * 1.2 + 1,
+    });
+  }
+
+  function drawStars(pulse) {
+    for (const s of stars) {
+      if (pulse) s.tw += s.ts;
+      const alpha = s.a * (pulse ? 0.55 + 0.45 * Math.sin(s.tw) : 0.8);
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,' + alpha.toFixed(3) + ')';
+      ctx.fill();
+    }
+  }
+
+  // Ondas de luz: faixas senoidais brilhantes atravessando o espaço.
+  // Velocidades maiores = as linhas serpenteiam visivelmente mais.
+  const WAVES = [
+    { y: .30, amp: .050, freq: .0065, speed: .00036, phase: 0,   color: '34,211,238',  width: 2.2, glow: 'rgba(34,211,238,.75)' },
+    { y: .44, amp: .068, freq: .0048, speed: .00028, phase: 1.7, color: '167,139,250', width: 2.8, glow: 'rgba(167,139,250,.7)' },
+    { y: .58, amp: .056, freq: .0058, speed: -.00034, phase: 3.1, color: '52,211,153', width: 1.8, glow: 'rgba(52,211,153,.65)' },
+    { y: .71, amp: .040, freq: .0080, speed: .00046, phase: 4.6, color: '96,165,250',  width: 1.5, glow: 'rgba(96,165,250,.55)' },
+  ];
+
+  function drawWaves(time) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter'; // luz soma com o fundo
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    for (const w of WAVES) {
+      const baseY = H * w.y;
+      const amp = H * w.amp;
+      ctx.beginPath();
+      for (let x = -20; x <= W + 20; x += 10) {
+        const y = baseY
+          + Math.sin(x * w.freq + time * w.speed + w.phase) * amp
+          + Math.sin(x * w.freq * 0.45 - time * w.speed * 0.7 + w.phase) * amp * 0.45;
+        if (x === -20) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+
+      const grad = ctx.createLinearGradient(0, 0, W, 0);
+      grad.addColorStop(0, 'rgba(' + w.color + ',0)');
+      grad.addColorStop(0.18, 'rgba(' + w.color + ',.14)');
+      grad.addColorStop(0.5, 'rgba(' + w.color + ',.55)');
+      grad.addColorStop(0.82, 'rgba(' + w.color + ',.14)');
+      grad.addColorStop(1, 'rgba(' + w.color + ',0)');
+
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = w.width;
+      ctx.shadowColor = w.glow;
+      ctx.shadowBlur = 22;
+      ctx.stroke();
+
+      // Fio de luz mais claro no meio da onda para dar profundidade.
+      ctx.strokeStyle = 'rgba(255,255,255,.16)';
+      ctx.lineWidth = Math.max(0.6, w.width * 0.35);
+      ctx.shadowBlur = 10;
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawStill() {
+    ctx.clearRect(0, 0, W, H);
+    drawWaves(0);
+    drawStars(false);
+  }
+
+  function frame(now) {
+    if (!running) return;
+    if (!last) last = now;
+    const dt = Math.min((now - last) / 16.67, 3); // normaliza ~60fps
+    last = now;
+
+    ctx.clearRect(0, 0, W, H);
+    drawWaves(now);
+    drawStars(true);
+
+    // Cria uma estrela cadente de tempos em tempos (máx. 6 na tela).
+    spawnTimer += dt;
+    if (spawnTimer > 55 + Math.random() * 70) {
+      spawnTimer = 0;
+      if (meteors.length < 6) spawnMeteor();
+    }
+
+    for (let i = meteors.length - 1; i >= 0; i--) {
+      const m = meteors[i];
+      m.x += m.vx * dt;
+      m.y += m.vy * dt;
+      m.life -= m.decay * dt;
+      if (m.life <= 0 || m.y > H + 120 || m.x < -160) { meteors.splice(i, 1); continue; }
+
+      const d = Math.hypot(m.vx, m.vy) || 1;
+      const tx = m.x - (m.vx / d) * m.len;
+      const ty = m.y - (m.vy / d) * m.len;
+      const grad = ctx.createLinearGradient(m.x, m.y, tx, ty);
+      grad.addColorStop(0, 'rgba(255,255,255,' + (0.95 * m.life).toFixed(3) + ')');
+      grad.addColorStop(0.3, 'rgba(200,240,255,' + (0.5 * m.life).toFixed(3) + ')');
+      grad.addColorStop(1, 'rgba(160,220,255,0)');
+
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = m.w;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(m.x, m.y);
+      ctx.lineTo(tx, ty);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(m.x, m.y, m.w * 1.3, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,' + (0.9 * m.life).toFixed(3) + ')';
+      ctx.fill();
+    }
+
+    raf = requestAnimationFrame(frame);
+  }
+
+  function enterSite() {
+    if (home.classList.contains('is-hidden')) return;
+    home.classList.add('is-hidden');
+    document.body.classList.remove('home-lock');
+    if (swapTimer) { clearInterval(swapTimer); swapTimer = 0; }
+    demoStopped = true;
+    // Fim do fade: a capa vira display:none, então paramos o canvas para não
+    // desperdiçar CPU/bateria animando algo que já está escondido.
+    window.setTimeout(() => {
+      home.style.display = 'none';
+      running = false;
+      if (raf) { cancelAnimationFrame(raf); raf = 0; }
+    }, 850);
+  }
+
+  // Aba oculta? Pausa o canvas da capa; ao voltar, retoma se ainda estiver visível.
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      if (raf) { cancelAnimationFrame(raf); raf = 0; }
+    } else if (running && !reduced && raf === 0) {
+      last = 0;
+      raf = requestAnimationFrame(frame);
+    }
+  });
+
+  btnEnter.addEventListener('click', enterSite);
+  window.addEventListener('resize', resize);
+  resize();
+  if (!reduced) raf = requestAnimationFrame(frame);
+})();

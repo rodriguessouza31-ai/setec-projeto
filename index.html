@@ -26,23 +26,77 @@
   <link rel="preload" as="image" href="img/istockphoto-1341244428-612x612-removebg-preview.png" />
   <!-- Pré-carrega as imagens flutuantes do menu/fundo (movimento lateral) -->
   <link rel="preload" as="image" href="img/gemini.jpeg" />
-  <link rel="preload" as="image" href="img/images__14_-removebg-preview.png" />
+  <link rel="preload" as="image" href="img/14_-removebg-preview.png" />
   <!-- Ícone da aba: emoji 🥤 embutido como SVG (sem arquivo extra) -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥤</text></svg>" />
 </head>
 <body>
-  <!-- Fundo animado: canvas das partículas (estrelas + explosões, via JS) -->
-  <canvas id="bg-particles" aria-hidden="true"></canvas>
-  <!-- Listrinhas de TV antiga sobre o fundo (só decoração, sem clique) -->
-  <div class="scanlines" aria-hidden="true"></div>
-  <!-- Manchas de luz flutuantes (roxa no topo, rosa na base) -->
-  <div class="glow-orb orb-1" aria-hidden="true"></div>
-  <div class="glow-orb orb-2" aria-hidden="true"></div>
-  <!-- Imagens de fundo do jogo: passeiam de um lado para o outro (só decoração, sem clique) -->
-  <div class="bg-floaters" aria-hidden="true">
-    <img class="bg-floater floater-left" src="img/gemini.jpeg" alt="" draggable="false" />
-    <img class="bg-floater floater-right" src="img/images__14_-removebg-preview.png" alt="" draggable="false" />
+  <!-- ============ FUNDO ESPACIAL COMPARTILHADO ============ -->
+  <!-- Aurora boreal + ondas de luz + estrelas cadentes. Fica atrás de tudo
+       e continua visível na capa, no menu e no jogo. -->
+  <div id="space-bg" class="space-bg" aria-hidden="true">
+    <!-- Aurora: faixas coloridas desfocadas que balançam devagar -->
+    <div class="aurora">
+      <span class="aurora-band band-1"></span>
+      <span class="aurora-band band-2"></span>
+      <span class="aurora-band band-3"></span>
+      <span class="aurora-band band-4"></span>
+    </div>
+
+    <!-- Canvas das ondas de luz, estrelas fixas e estrelas cadentes (via JS) -->
+    <canvas id="home-canvas"></canvas>
   </div>
+
+  <!-- Canvas das explosões/confetes do jogo (via JS) -->
+  <canvas id="bg-particles" aria-hidden="true"></canvas>
+
+  <!-- Imagens que aparecem e desaparecem no fundo durante a partida -->
+  <div id="game-bg-floaters" class="bg-floaters game-floaters" aria-hidden="true">
+    <img class="bg-floater floater-left" src="img/gemini.jpeg" alt="" draggable="false" />
+    <img class="bg-floater floater-right" src="img/14_-removebg-preview.png" alt="" draggable="false" />
+  </div>
+
+  <!-- ============ TELA INICIAL / CAPA ============ -->
+  <!-- Overlay em tela cheia com a bola de cristal. O botão ENTRAR esconde
+       esta camada e revela o menu do jogo sobre o mesmo fundo espacial. -->
+  <section id="home-screen" class="home-screen" aria-label="Tela inicial">
+    <div class="home-content">
+      <span class="home-eyebrow">🕹️ ARCADE • ROGUELIKE • SHELL GAME</span>
+      <h1 class="home-title">COPOS <em>MÍSTICOS</em></h1>
+
+      <!-- Bola de cristal: as 2 imagens flutuam e trocam de lado dentro da esfera -->
+      <div class="ball-stage">
+        <div class="crystal-ball" aria-hidden="true">
+          <div class="ball-inner">
+            <div class="orb-holder holder-a pos-left">
+              <img class="orb-img orb-img-a" src="img/14_-removebg-preview.png" alt="" draggable="false" />
+            </div>
+            <div class="orb-holder holder-b pos-right">
+              <img class="orb-img orb-img-b" src="img/gemini.jpeg" alt="" draggable="false" />
+            </div>
+
+            <!-- Mini demonstração do jogo: copos embaralhando e bolinha -->
+            <div class="ball-demo">
+              <div class="demo-stage">
+                <div class="demo-glow"></div>
+                <div class="demo-ball"><img src="img/istockphoto-1341244428-612x612-removebg-preview.png" alt="" draggable="false" /></div>
+                <div class="demo-cup" data-slot="0"><img src="img/images__6_-removebg-preview.png" alt="" draggable="false" /></div>
+                <div class="demo-cup" data-slot="1"><img src="img/images__6_-removebg-preview.png" alt="" draggable="false" /></div>
+                <div class="demo-cup" data-slot="2"><img src="img/images__6_-removebg-preview.png" alt="" draggable="false" /></div>
+              </div>
+            </div>
+
+            <span class="ball-haze"></span>
+            <span class="ball-shine"></span>
+          </div>
+        </div>
+        <span class="ball-stand" aria-hidden="true"></span>
+      </div>
+
+      <p class="home-tagline">O futuro está na bola. <strong>Mas o jogo é você quem faz.</strong></p>
+      <button id="btn-enter" class="btn btn-primary btn-big home-enter" type="button">▶ &nbsp;ENTRAR</button>
+    </div>
+  </section>
 
   <!-- Contêiner central do jogo (largura máx. 1080px) -->
   <div id="app">
@@ -67,6 +121,8 @@
       <!-- ============ TELA 1: MENU (início) ============ -->
       <section id="screen-menu" class="screen active"><!-- .active = visível ao abrir -->
         <div class="menu-hero"><!-- cartão principal do menu -->
+          <!-- Sair do jogo: só existe no menu (canto superior do cartão) -->
+          <button id="btn-exit-menu" class="menu-exit" type="button" title="Sair do jogo" aria-label="Sair do jogo">✕ Sair</button>
           <!-- Selo pequeno acima do título -->
           <div class="hero-badge">🕹️ ARCADE • ROGUELIKE • SHELL GAME</div>
           <!-- Título gigante em 2 linhas (MÍSTICOS com degradê animado) -->
@@ -80,7 +136,7 @@
           <!-- Imagens do menu principal: passeiam de um lado para o outro -->
           <div class="menu-floaters" aria-hidden="true">
             <img class="menu-floater menu-floater-a" src="img/gemini.jpeg" alt="" draggable="false" />
-            <img class="menu-floater menu-floater-b" src="img/images__14_-removebg-preview.png" alt="" draggable="false" />
+            <img class="menu-floater menu-floater-b" src="img/14_-removebg-preview.png" alt="" draggable="false" />
           </div>
 
           <!-- 3 caixinhas: recorde / copos iniciais / bolinhas -->
@@ -126,15 +182,16 @@
               <li><strong>Acompanhe:</strong> os copos escondem tudo e embaralham cada vez mais rápido.</li>
               <li><strong>Encontre pelo menos 1 bolinha:</strong> clique nos copos. Achou 1 → próxima rodada + carta!</li>
               <li><strong>Errou 1 copo vazio → GAME OVER.</strong></li>
-              <li><strong>Progressão:</strong> +1 copo por rodada • +1 bolinha a cada 5 rodadas (sempre basta achar 1!) • velocidade e truques aumentam.</li>
+              <li><strong>Progressão:</strong> +1 copo por rodada (até 20!) • +1 bolinha a cada 5 rodadas (sempre basta achar 1!) • velocidade e truques aumentam.</li>
               <li><strong>Dificuldades:</strong> 😌 Normal (3 copos, 1 poder) • 😈 Difícil (4 copos, 🚫 sem poderes) • 🔮 Místico (6 copos, 4 poderes).</li>
               <li><strong>Cartas:</strong> use com estratégia na hora de adivinhar para ganhar bônus.</li>
             </ol>
             <!-- Resumo da dificuldade por rodada -->
             <div class="diff-table">
               <div><span>Rodada 1</span><b>3 copos • 1 bola • lento</b></div>
-              <div><span>Rodada 6</span><b>8 copos • 2 bolas • rápido + giros triplos</b></div>
-              <div><span>Rodada 11+</span><b>10 copos • 3 bolas • insano 🔥</b></div>
+              <div><span>Rodada 8</span><b>10 copos • 2 bolas • rápido + giros triplos</b></div>
+              <div><span>Rodada 13</span><b>15 copos • 3 bolas • muito rápido 🔥</b></div>
+              <div><span>Rodada 18+</span><b>20 copos • 4 bolas • insano 🔥🔥</b></div>
             </div>
           </div>
 
@@ -237,7 +294,7 @@
           <div id="go-deck" class="go-deck"></div><!-- resumo do deck restante (JS monta) -->
           <!-- Botões: jogar de novo ou voltar ao menu -->
           <div class="menu-buttons">
-            <button id="btn-again" class="btn btn-primary btn-big">🔄 &nbsp;JOGAR DE NOVO</button>
+            <button id="btn-again" class="btn btn-primary btn-big">🔄 &nbsp;JOGAR NOVAMENTE</button>
             <button id="btn-menu" class="btn btn-ghost">🏠 MENU</button>
           </div>
         </div>
