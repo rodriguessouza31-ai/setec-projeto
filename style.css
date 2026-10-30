@@ -792,6 +792,24 @@ body.home-lock #app { opacity: 0; visibility: hidden; pointer-events: none; }
 
 /* Recorte interno: tudo que está aqui respeita o círculo da esfera. */
 .ball-inner { position: absolute; inset: 0; border-radius: 50%; overflow: hidden; }
+/* Luz roxa atrás das imagens: um halo que pulsa devagar dentro da esfera.
+   z-index 0 mantém o brilho atrás dos orb-holders (z-index 1). */
+.ball-inner::before {
+  content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  border-radius: 50%; mix-blend-mode: screen; filter: blur(16px);
+  background:
+    radial-gradient(circle at 28% 36%, rgba(167,139,250,.60), rgba(124,58,237,.22) 34%, transparent 60%),
+    radial-gradient(circle at 72% 57%, rgba(192,132,252,.52), rgba(139,92,246,.18) 32%, transparent 58%),
+    radial-gradient(circle at 50% 50%, rgba(109,40,217,.26), transparent 70%);
+  animation: ballAura 7s ease-in-out infinite;
+  transition: opacity .55s ease;
+}
+@keyframes ballAura {
+  0%, 100% { opacity: .72; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.06); }
+}
+/* Durante a demo as imagens somem: o halo roxo também sai de cena. */
+.ball-inner.images-out::before { opacity: 0; animation-play-state: paused; }
 /* O holder posiciona a imagem numa das metades da esfera. Ele troca de lado
    com um fade: some, muda de posição e reaparece, sem nunca atravessar a
    outra imagem (por isso não se tocam). */
@@ -932,5 +950,6 @@ body.home-lock #app { opacity: 0; visibility: hidden; pointer-events: none; }
   .home-tagline { margin-bottom: 14px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .aurora-band, .crystal-ball, .orb-img-a, .orb-img-b, .ball-haze { animation: none !important; }
+  .aurora-band, .crystal-ball, .orb-img-a, .orb-img-b, .ball-haze,
+  .ball-inner::before { animation: none !important; }
 }
