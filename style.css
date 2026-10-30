@@ -793,7 +793,7 @@ body.home-lock #app { opacity: 0; visibility: hidden; pointer-events: none; }
 /* Recorte interno: tudo que está aqui respeita o círculo da esfera. */
 .ball-inner { position: absolute; inset: 0; border-radius: 50%; overflow: hidden; }
 /* Luz roxa atrás das imagens: um halo que pulsa devagar dentro da esfera.
-   z-index 0 mantém o brilho atrás dos orb-holders (z-index 1). */
+   z-index 0 mantém o brilho atrás da imagem de fundo da bola. */
 .ball-inner::before {
   content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
   border-radius: 50%; mix-blend-mode: screen; filter: blur(16px);
@@ -810,18 +810,20 @@ body.home-lock #app { opacity: 0; visibility: hidden; pointer-events: none; }
 }
 /* Durante a demo as imagens somem: o halo roxo também sai de cena. */
 .ball-inner.images-out::before { opacity: 0; animation-play-state: paused; }
-/* O holder posiciona a imagem numa das metades da esfera. Ele troca de lado
-   com um fade: some, muda de posição e reaparece, sem nunca atravessar a
-   outra imagem (por isso não se tocam). */
-.orb-holder {
-  position: absolute; top: 50%; transform: translate(-50%, -50%); z-index: 1;
-  transition: opacity .55s ease; will-change: opacity;
+/* Imagens laterais: ficam dos lados da esfera (uma de cada lado), atrás dela,
+   e aparecem/desaparecem em loop com um leve flutuar. */
+.side-orb {
+  position: absolute; top: 46%; z-index: 0; pointer-events: none;
+  width: clamp(44px, 13vw, 150px);
+  transform: translateY(-50%); opacity: 0;
+  animation: sideOrbFade 7s ease-in-out infinite;
 }
-.orb-holder.pos-left { left: 28%; }
-.orb-holder.pos-right { left: 72%; }
-.orb-holder.is-fading { opacity: 0; }
-.holder-a { top: 36%; width: 40%; }
-.holder-b { top: 57%; width: 34%; }
+.side-orb-a { right: calc(100% + clamp(14px, 2.5vw, 32px)); } /* afastada à esquerda da bola */
+.side-orb-b { left: calc(100% + clamp(14px, 2.5vw, 32px)); }  /* afastada à direita da bola */
+@keyframes sideOrbFade {
+  0%, 100% { opacity: 0; }
+  22%, 60% { opacity: .9; }
+}
 .orb-img {
   display: block; width: 100%; height: auto; will-change: transform, filter;
   -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 42%, transparent 72%);
@@ -836,6 +838,25 @@ body.home-lock #app { opacity: 0; visibility: hidden; pointer-events: none; }
   aspect-ratio: 1; object-fit: cover; border-radius: 50%; opacity: .66;
   filter: drop-shadow(0 0 16px rgba(244,114,182,.6)) saturate(1.18);
   animation: orbFloatB 13s ease-in-out infinite;
+}
+/* Imagem fixa no centro da esfera: fica sozinha, maior e sempre visível.
+   z-index 0 a mantém à frente do halo roxo (::before), que segue como luz
+   de fundo; as imagens laterais vivem fora da esfera. */
+.orb-img-bg {
+  position: absolute; left: 50%; top: 50%; z-index: 0;
+  width: 84%; height: 84%; object-fit: cover; border-radius: 50%;
+  transform: translate(-50%, -50%); pointer-events: none; opacity: .55;
+  filter: saturate(1.1) drop-shadow(0 0 24px rgba(139,92,246,.55));
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 58%, transparent 82%);
+  mask-image: radial-gradient(circle at 50% 50%, #000 58%, transparent 82%);
+  animation: orbBgFloat 18s ease-in-out infinite;
+  transition: opacity .55s ease;
+}
+/* Quando as outras imagens somem, ela fica sozinha e ganha mais presença. */
+.ball-inner.images-out .orb-img-bg { opacity: .82; }
+@keyframes orbBgFloat {
+  0%, 100% { transform: translate(-50%, -50%) scale(.98) rotate(-1deg); }
+  50%      { transform: translate(-50%, -52%) scale(1.04) rotate(1deg); }
 }
 /* Flutuação curta em torno do próprio holder (não cruza o centro). */
 @keyframes orbFloatA {
@@ -871,8 +892,7 @@ body.home-lock #app { opacity: 0; visibility: hidden; pointer-events: none; }
   from { opacity: 1; transform: translateY(-50%) scale(1); }
   to   { opacity: 0; transform: translateY(-50%) scale(.94); }
 }
-/* Fase da demo: as imagens somem para a demonstração aparecer sozinha. */
-.ball-inner.images-out .orb-holder { opacity: 0; }
+/* Fase da demo: a imagem de fundo fica sozinha para a demonstração aparecer. */
 .demo-stage { position: relative; width: 100%; height: 100%; }
 .demo-glow {
   position: absolute; left: 2%; right: 2%; bottom: 2%; height: 30%;
@@ -941,6 +961,10 @@ body.home-lock #app { opacity: 0; visibility: hidden; pointer-events: none; }
   .home-title { font-size: clamp(28px, 9vw, 44px); }
   .home-eyebrow { font-size: 9px; letter-spacing: 2px; }
   .aurora-band { filter: blur(44px); }
+  /* Laterais menores para caberem afastadas da bola em telas estreitas. */
+  .side-orb { width: clamp(30px, 8vw, 80px); }
+  .side-orb-a { right: calc(100% + 6px); }
+  .side-orb-b { left: calc(100% + 6px); }
 }
 @media (max-height: 820px) {
   .home-title { font-size: clamp(26px, 4.5vw, 46px); }
@@ -950,6 +974,8 @@ body.home-lock #app { opacity: 0; visibility: hidden; pointer-events: none; }
   .home-tagline { margin-bottom: 14px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .aurora-band, .crystal-ball, .orb-img-a, .orb-img-b, .ball-haze,
+  .aurora-band, .crystal-ball, .orb-img-a, .orb-img-b, .orb-img-bg, .ball-haze,
   .ball-inner::before { animation: none !important; }
+  /* Sem animação, as imagens laterais ficam visíveis paradas. */
+  .side-orb { opacity: .85; animation: none !important; }
 }

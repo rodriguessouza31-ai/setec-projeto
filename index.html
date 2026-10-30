@@ -64,16 +64,19 @@
       <span class="home-eyebrow">🕹️ ARCADE • ROGUELIKE • SHELL GAME</span>
       <h1 class="home-title">COPOS <em>MÍSTICOS</em></h1>
 
-      <!-- Bola de cristal: as 2 imagens flutuam e trocam de lado dentro da esfera -->
+      <!-- Bola de cristal: imagem fixa dentro; as 2 imagens ficam nos lados -->
       <div class="ball-stage">
+        <!-- Imagens laterais da bola: aparecem e desaparecem em loop -->
+        <div class="side-orb side-orb-a" aria-hidden="true">
+          <img class="orb-img orb-img-a" src="img/14_-removebg-preview.png" alt="" draggable="false" />
+        </div>
+        <div class="side-orb side-orb-b" aria-hidden="true">
+          <img class="orb-img orb-img-b" src="img/gemini.jpeg" alt="" draggable="false" />
+        </div>
         <div class="crystal-ball" aria-hidden="true">
           <div class="ball-inner">
-            <div class="orb-holder holder-a pos-left">
-              <img class="orb-img orb-img-a" src="img/14_-removebg-preview.png" alt="" draggable="false" />
-            </div>
-            <div class="orb-holder holder-b pos-right">
-              <img class="orb-img orb-img-b" src="img/gemini.jpeg" alt="" draggable="false" />
-            </div>
+            <!-- Imagem de fundo fixa (fica sempre visível, maior e sozinha) -->
+            <img class="orb-img-bg" src="img/Gemini_Generated_Image_1dg0en1dg0en1dg0.jpg" alt="" draggable="false" />
 
             <!-- Mini demonstração do jogo: copos embaralhando e bolinha -->
             <div class="ball-demo">
