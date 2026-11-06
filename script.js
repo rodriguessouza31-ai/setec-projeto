@@ -498,6 +498,8 @@ function renderCups() {
     // Entrada em cascata: cada copo surge com um pequeno atraso em relação ao anterior.
     d.classList.add('cup-enter');
     d.style.animationDelay = (i * 35) + 'ms';
+    // Cor inicial do ciclo de cores: cada copo começa num tom diferente.
+    d.style.setProperty('--cup-hue', Math.round((i * 360) / S.numCups) + 'deg');
     const clearEnter = () => { d.classList.remove('cup-enter'); d.style.animationDelay = ''; };
     d.addEventListener('animationend', (ev) => {
       if (ev.target === d && ev.animationName === 'cupIn') clearEnter();
@@ -578,6 +580,7 @@ async function rotateAll(speed) {
   const before = new Map(S.cups.map(c => [c.id, c.el.getBoundingClientRect()]));
   const first = S.cups.shift(); S.cups.push(first); // tira o 1º e joga no fim
   syncCupDom(); // reordena as divs no DOM movendo só as necessárias
+  S.cups.forEach(c => c.el.classList.add('swapping')); // ativa o ciclo de cores
   sfx.swap(); // som de movimento
   // INVERT: puxa cada copo de volta ao lugar antigo (sem animação)…
   S.cups.forEach(c => {
@@ -596,7 +599,7 @@ async function rotateAll(speed) {
     c.el.style.transform = 'translate(0,0)';
   });
   await sleep(Math.max(150, speed)); // espera o giro terminar
-  S.cups.forEach(c => { c.el.style.transition = ''; c.el.style.transform = ''; }); // limpa
+  S.cups.forEach(c => { c.el.style.transition = ''; c.el.style.transform = ''; c.el.classList.remove('swapping'); }); // limpa
   // Renumera as etiquetas conforme a nova ordem.
   S.cups.forEach((c, idx) => { const el = c.el.querySelector('.cup-num'); if (el) el.textContent = '#' + (idx + 1); });
 }

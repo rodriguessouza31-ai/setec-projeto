@@ -499,14 +499,22 @@ body.playing .game-floaters { display: block; }
   60%  { opacity: .85; transform: scale(1.15) rotate(6deg) translateY(-4px); }
   100% { opacity: .75; transform: scale(1) rotate(0deg) translateY(0); }
 }
-/* Durante a troca: brilho violeta + leve inclinação no copo em movimento. */
+/* Durante a troca: leve inclinação + ciclo de cores (arco-íris) no copo.
+   --cup-hue é definido no JS por copo, então cada um começa num tom diferente. */
 .cup-slot.swapping .cup-body {
-  filter: brightness(1.32) drop-shadow(0 0 16px var(--violet));
-  animation: cupSwapTilt .42s ease-in-out infinite alternate;
+  animation: cupSwapTilt .42s ease-in-out infinite alternate,
+             cupSwapColor .9s linear infinite;
 }
 @keyframes cupSwapTilt {
   from { transform: translateY(-2px) rotate(-2.5deg) scale(1.02); }
   to   { transform: translateY(-9px) rotate(3deg) scale(1.06); }
+}
+@keyframes cupSwapColor {
+  0%   { filter: brightness(1.35) saturate(1.4) drop-shadow(0 0 18px #ff4d4d) hue-rotate(var(--cup-hue, 0deg)); }
+  25%  { filter: brightness(1.35) saturate(1.4) drop-shadow(0 0 18px #ff4d4d) hue-rotate(calc(var(--cup-hue, 0deg) + 90deg)); }
+  50%  { filter: brightness(1.35) saturate(1.4) drop-shadow(0 0 18px #ff4d4d) hue-rotate(calc(var(--cup-hue, 0deg) + 180deg)); }
+  75%  { filter: brightness(1.35) saturate(1.4) drop-shadow(0 0 18px #ff4d4d) hue-rotate(calc(var(--cup-hue, 0deg) + 270deg)); }
+  100% { filter: brightness(1.35) saturate(1.4) drop-shadow(0 0 18px #ff4d4d) hue-rotate(calc(var(--cup-hue, 0deg) + 360deg)); }
 }
 /* Travado: cursor normal (não parece clicável). */
 .cup-slot.locked { cursor: default; }
