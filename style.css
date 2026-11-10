@@ -107,8 +107,8 @@ body.playing .game-floaters { display: block; }
 
 /* Vitrine do menu principal: as 2 imagens lado a lado, indo e voltando. */
 .menu-floaters {
-  display: flex; justify-content: center; align-items: center; gap: 12px;
-  margin: 2px auto 12px; max-width: 400px; overflow: hidden; padding: 4px;
+  display: flex; justify-content: center; align-items: center; gap: 40px;
+  margin: 2px auto 12px; max-width: 480px; overflow: hidden; padding: 4px;
 }
 .menu-floater { user-select: none; pointer-events: none; }
 .menu-floater-a {
@@ -665,7 +665,7 @@ body.playing .game-floaters { display: block; }
   .cups .cup-slot { --lift-y: -62px; } /* levantamento menor: arena mais baixa */
   .floater-left { top: 8%; opacity: .30; } /* fundo mais discreto no celular */
   .floater-right { bottom: 4%; opacity: .55; }
-  .menu-floaters { gap: 8px; } /* vitrine mais junta no celular */
+  .menu-floaters { gap: 24px; } /* vitrine levemente mais junta no celular */
 }
 @media (max-width: 380px) {
   .hud { grid-template-columns: repeat(2, 1fr); } /* HUD em 2 colunas */
